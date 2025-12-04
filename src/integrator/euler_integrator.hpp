@@ -1,49 +1,49 @@
 #pragma once
 #include "integrator.hpp"
-#include <iostream>
 
 class EulerIntegrator : public Integrator
 {
 public:
     void step1(
-        std::vector<Particle> &,
-        const std::vector<std::array<double, 2>> &,
-        double,
-        double,
-        double) override
+        std::vector<Particle> &particles,
+        const std::vector<int> &fluid_indices,
+        const std::vector<std::array<double, 2>> &accel,
+        double dt,
+        double Lx,
+        double Ly) override
     {
         // EulerIntegrator does not have step 1
     }
 
     void step2(
         std::vector<Particle> &particles,
+        const std::vector<int> &fluid_indices,
         const std::vector<std::array<double, 2>> &accel,
         double dt,
         double Lx,
         double Ly) override
     {
 
-        for (size_t i = 0; i < particles.size(); ++i)
+        // only integrate fluid particles
+        for (int i : fluid_indices)
         {
-            auto &p = particles[i];
-            if (p.type == 1)
-                continue;
+            auto &pi = particles[i];
 
-            p.v[0] += accel[i][0] * dt;
-            p.v[1] += accel[i][1] * dt;
+            pi.v[0] += accel[i][0] * dt;
+            pi.v[1] += accel[i][1] * dt;
 
-            p.x[0] += p.v[0] * dt;
-            p.x[1] += p.v[1] * dt;
+            pi.x[0] += pi.v[0] * dt;
+            pi.x[1] += pi.v[1] * dt;
 
             // periodic BC
-            if (p.x[0] >= Lx / 2)
-                p.x[0] -= Lx;
-            if (p.x[0] < -Lx / 2)
-                p.x[0] += Lx;
-            if (p.x[1] >= Ly / 2)
-                p.x[1] -= Ly;
-            if (p.x[1] < -Ly / 2)
-                p.x[1] += Ly;
+            if (pi.x[0] >= Lx / 2)
+                pi.x[0] -= Lx;
+            if (pi.x[0] < -Lx / 2)
+                pi.x[0] += Lx;
+            if (pi.x[1] >= Ly / 2)
+                pi.x[1] -= Ly;
+            if (pi.x[1] < -Ly / 2)
+                pi.x[1] += Ly;
         }
     }
 };

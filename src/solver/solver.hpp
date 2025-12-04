@@ -63,6 +63,13 @@ private:
     std::vector<std::vector<int>> neighbors;  // neighborlist per particle
     std::vector<std::array<double, 2>> accel; // acceleration
 
+    // particle indices by type
+    std::vector<int> fluid_indices;
+    std::vector<int> boundary_indices;
+    // std::vector<int> solid_indices; // for future use
+    void build_index_lists();
+
+
     DensityMethod density_method = DensityMethod::Summation;
 
     double total_elapsed_time = 0.0; // total simulation time in seconds

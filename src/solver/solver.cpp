@@ -20,6 +20,7 @@ void Solver::set_particles(const std::vector<Particle> &parts)
     particles = parts;
     neighbors.resize(particles.size());
     accel.resize(particles.size(), {0.0, 0.0});
+    build_index_lists();
 
     // initialize BC particles
     for (auto &p : particles)
@@ -42,6 +43,24 @@ void Solver::set_particles(const std::vector<Particle> &parts)
             p.drho_dt = std::nullopt;
         else if (density_method == DensityMethod::Continuity)
             p.drho_dt = 0.0;
+    }
+}
+
+// build index lists for particle types
+void Solver::build_index_lists()
+{
+    fluid_indices.clear();
+    boundary_indices.clear();
+    // solid_indices.clear(); // for future use
+
+    for (int i = 0; i < particles.size(); ++i)
+    {
+        if (particles[i].type == 0)
+            fluid_indices.push_back(i);
+        else if (particles[i].type == 1)
+            boundary_indices.push_back(i);
+        // else if (particles[i].type == 2) // for future use
+        //     solid_indices.push_back(i);
     }
 }
 
@@ -93,14 +112,14 @@ void Solver::step()
 {
     if (density_method == DensityMethod::Continuity)
         compute_density_continuity();
-    integrator->step1(particles, accel, dt, Lx, Ly);
+    integrator->step1(particles, fluid_indices, accel, dt, Lx, Ly);
     update_neighbors();
     if (density_method == DensityMethod::Summation)
         compute_density_summation();
     compute_pressure();
     compute_boundaryconditions();
     compute_forces();
-    integrator->step2(particles, accel, dt, Lx, Ly);
+    integrator->step2(particles, fluid_indices, accel, dt, Lx, Ly);
 }
 
 // run simulation
@@ -164,13 +183,12 @@ void Solver::update_neighbors()
 // compute density summation (rho_i = sum_j m_j W(r_ij))
 void Solver::compute_density_summation()
 {
-    const std::size_t n = particles.size();
-    for (std::size_t i = 0; i < n; ++i)
+    // only loop over fluid particles
+    for (int i : fluid_indices)
     {
         Particle &pi = particles[i];
-        if (pi.type == 1)
-            continue;
         double rho = 0.0;
+
         for (int j : neighbors[i])
         {
             Particle &pj = particles[j];
@@ -190,13 +208,11 @@ void Solver::compute_density_continuity()
 {
     for (auto &p : particles)
         p.drho_dt = 0.0;
-
-    const std::size_t n = particles.size();
-    for (std::size_t i = 0; i < n; ++i)
+    
+    // only loop over fluid particles
+    for (int i : fluid_indices)
     {
         Particle &pi = particles[i];
-        if (pi.type == 1)
-            continue;
 
         double drho_dt_i = 0.0;
         const double vi_x = pi.v[0];
@@ -228,10 +244,11 @@ void Solver::compute_density_continuity()
 // compute pressure
 void Solver::compute_pressure()
 {
-    for (auto &pi : particles)
+    
+    // only loop pver fluid particles
+    for (int i : fluid_indices)
     {
-        if (pi.type == 1)
-            continue;
+        Particle &pi = particles[i];
         pi.p = eos.pressure_from_density(pi.rho);
     }
 }
@@ -239,12 +256,10 @@ void Solver::compute_pressure()
 // compute boundary conditions for boundary particles
 void Solver::compute_boundaryconditions()
 {
-    const std::size_t n = particles.size();
-    for (std::size_t i = 0; i < n; ++i)
+    for (int i : boundary_indices)
     {
         Particle &pi = particles[i];
-        if (pi.type != 1)
-            continue;
+
         if (!pi.vf.has_value())
             pi.vf = {0.0, 0.0};
         if (!pi.pf.has_value())
@@ -256,6 +271,8 @@ void Solver::compute_boundaryconditions()
         for (int j : neighbors[i])
         {
             Particle &pj = particles[j];
+
+            // skip other boundary particles
             if (pj.type == 1)
                 continue;
 
@@ -297,11 +314,10 @@ void Solver::compute_forces()
     accel.assign(accel.size(), {0.0, 0.0});
     const std::size_t n = particles.size();
 
-    for (std::size_t i = 0; i < n; ++i)
+    // only loop pver fluid particles
+    for (int i : fluid_indices)
     {
         Particle &pi = particles[i];
-        if (pi.type == 1)
-            continue;
 
         double fx = 0.0, fy = 0.0;
         const double vi_x = pi.v[0];
@@ -326,19 +342,19 @@ void Solver::compute_forces()
             double dW = kernel.getdW(r, h) / r;
 
             const double Vij_sqr = Vi * Vi + Vj * Vj;
-            const double prefac = (rho_j * p_i + rho_i * p_j) / (rho_i + rho_j);
+            const double p_fac = (rho_j * p_i + rho_i * p_j) / (rho_i + rho_j);
 
-            fx -= Vij_sqr * prefac * dW * dx;
-            fy -= Vij_sqr * prefac * dW * dy;
+            fx -= Vij_sqr * p_fac * dW * dx;
+            fy -= Vij_sqr * p_fac * dW * dy;
 
             const double dvx = vi_x - vj_x;
             const double dvy = vi_y - vj_y;
-            const double fac = dW * dx * dx + dW * dy * dy;
+            const double visc_fac = dW * dx * dx + dW * dy * dy;
 
             // avoid division by zero when r is extremely small
             const double r2 = (r > 0.0) ? (r * r) : 1e-12;
-            fx += (mu * Vij_sqr * fac / r2) * dvx;
-            fy += (mu * Vij_sqr * fac / r2) * dvy;
+            fx += (mu * Vij_sqr * visc_fac / r2) * dvx;
+            fy += (mu * Vij_sqr * visc_fac / r2) * dvy;
         }
 
         // compute acceleration and add body force
