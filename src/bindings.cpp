@@ -43,7 +43,7 @@ PYBIND11_MODULE(SimplePH, m)
              py::arg("vtk_freq") = 1,
              py::arg("log_freq") = 0)
         .def("set_eos", &Solver::set_eos,
-             py::arg("eos_type"), py::arg("bp") = 0.0)
+             py::arg("eos_type"), py::arg("bp_fac") = 0.0)
         .def("set_density_method", &Solver::set_density_method)
         .def("set_particles", &Solver::set_particles)
         .def("set_integrator", &Solver::set_integrator)

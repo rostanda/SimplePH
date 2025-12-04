@@ -27,7 +27,7 @@ public:
     void set_acceleration(const std::array<double, 2> &b_);
     void compute_soundspeed();
     void compute_timestep();
-    void set_eos(EOSType eos_type_, double bp_);
+    void set_eos(EOSType eos_type_, double bp_fac_);
     void set_integrator(std::shared_ptr<Integrator> integrator_) { this->integrator = integrator_; }
 
     enum class DensityMethod
