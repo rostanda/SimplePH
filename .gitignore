@@ -1,0 +1,51 @@
+# Build artifacts
+/build/
+/src/**/CMakeFiles/
+/src/**/CMakeCache.txt
+/src/**/Makefile
+
+# CMake files and generated build files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiled object files and libraries
+*.o
+*.obj
+*.so
+*.a
+*.lib
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+env/
+.env/
+.venv/
+venv/
+build/             # if Python packages are built here
+dist/
+*.egg-info/
+
+# pybind11 built extension in python/ directory
+/python/*.so
+
+# VTK output files - particle snapshots
+*.vtu
+particles_*.vtu
+
+# pytest cache
+.pytest_cache/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
