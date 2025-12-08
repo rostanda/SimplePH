@@ -3,6 +3,7 @@ import numpy as np
 import math
 import os
 import pathlib
+import sys
 
 # create particle layout
 def create_particles():
@@ -32,13 +33,28 @@ def create_particles():
             parts.append(p)
     return parts
 
+# threads for computing (default: 1)
+num_threads = 1
+
+# override via -np <N> as command line argument
+if "-np" in sys.argv:
+    idx = sys.argv.index("-np")
+    try:
+        num_threads = int(sys.argv[idx + 1])
+    except (IndexError, ValueError):
+        raise ValueError("Usage: script.py [-np N]")
+
+print(f"Setting {num_threads} OpenMP threads")
+SimplePH.set_omp_threads(num_threads)
+SimplePH.test_threads()
+
 
 # geometry
 Lx = 0.1
 Ly = 0.1
 
 # resolution
-res = 20
+res = 40
 dx = Lx / res
 
 print("res:", res)
@@ -126,8 +142,8 @@ solver.set_integrator(SimplePH.VelocityVerletIntegrator())
 # solver.set_integrator(SimplePH.EulerIntegrator())
 
 # density method
-solver.set_density_method(SimplePH.DensityMethod.Continuity)
-# solver.set_density_method(SimplePH.DensityMethod.Summation)
+# solver.set_density_method(SimplePH.DensityMethod.Continuity)
+solver.set_density_method(SimplePH.DensityMethod.Summation)
 
 # run simulation
 output_name = "poiseuille_flow"
@@ -140,6 +156,6 @@ cwd = os.getcwd()
 try:
     os.chdir(outdir)
     print(f"Writing VTU output into: {outdir.resolve()}")
-    solver.run(1001, vtk_freq=50, log_freq=10)
+    solver.run(2501, vtk_freq=100, log_freq=50)
 finally:
     os.chdir(cwd)

@@ -7,11 +7,21 @@
 #include "utils.hpp"
 #include "integrator.hpp"
 
+// include OpenMP for parallelization
+#include <omp.h>
+
 // constructor
 Solver::Solver(double h_, double Lx_, double Ly_, double dx0_, double Lref_, double vref_, KernelType kernel_type_)
     : h(h_), Lx(Lx_), Ly(Ly_), dx0(dx0_), Lref(Lref_), vref(vref_), kernel(kernel_type_, h_),
       grid(kernel.get_rcut(h_), Lx_, Ly_)
 {
+#pragma omp parallel
+    {
+#pragma omp single
+        {
+            printf("[OpenMP] Threads in this parallel region: %d\n", omp_get_num_threads());
+        }
+    }
 }
 
 // set particles
@@ -170,10 +180,10 @@ void Solver::update_neighbors()
     neighbors.clear();
     neighbors.resize(particles.size());
     grid.build(particles);
-    const std::size_t n = particles.size();
-    for (std::size_t i = 0; i < n; ++i)
+
+#pragma omp parallel for
+    for (size_t i = 0; i < particles.size(); ++i)
     {
-        // grid.find_neighbors calls the provided lambda for each neighbor pair
         grid.find_neighbors(static_cast<int>(i), particles,
                             [&](int pid, int jid, double dx, double dy, double r)
                             { neighbors[pid].push_back(jid); });
@@ -183,9 +193,11 @@ void Solver::update_neighbors()
 // compute density summation (rho_i = sum_j m_j W(r_ij))
 void Solver::compute_density_summation()
 {
-    // only loop over fluid particles
-    for (int i : fluid_indices)
+// only loop over fluid particles
+#pragma omp parallel for schedule(static)
+    for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
     {
+        int i = fluid_indices[idx];
         Particle &pi = particles[i];
         double rho = 0.0;
 
@@ -206,12 +218,15 @@ void Solver::compute_density_summation()
 // compute density using continuity equation (d rho / dt)
 void Solver::compute_density_continuity()
 {
+#pragma omp parallel for schedule(static)
     for (auto &p : particles)
         p.drho_dt = 0.0;
-    
-    // only loop over fluid particles
-    for (int i : fluid_indices)
+
+// only loop over fluid particles
+#pragma omp parallel for schedule(static)
+    for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
     {
+        int i = fluid_indices[idx];
         Particle &pi = particles[i];
 
         double drho_dt_i = 0.0;
@@ -244,10 +259,12 @@ void Solver::compute_density_continuity()
 // compute pressure
 void Solver::compute_pressure()
 {
-    
-    // only loop pver fluid particles
-    for (int i : fluid_indices)
+
+// only loop over fluid particles
+#pragma omp parallel for schedule(static)
+    for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
     {
+        int i = fluid_indices[idx];
         Particle &pi = particles[i];
         pi.p = eos.pressure_from_density(pi.rho);
     }
@@ -256,8 +273,11 @@ void Solver::compute_pressure()
 // compute boundary conditions for boundary particles
 void Solver::compute_boundaryconditions()
 {
-    for (int i : boundary_indices)
+// only loop over boundary particles
+#pragma omp parallel for schedule(static)
+    for (int idx = 0; idx < (int)boundary_indices.size(); ++idx)
     {
+        int i = boundary_indices[idx];
         Particle &pi = particles[i];
 
         if (!pi.vf.has_value())
@@ -311,12 +331,15 @@ void Solver::compute_boundaryconditions()
 // compute particle forces (pressure + viscous terms)
 void Solver::compute_forces()
 {
-    accel.assign(accel.size(), {0.0, 0.0});
-    const std::size_t n = particles.size();
+#pragma omp parallel for schedule(static)
+    for (int i = 0; i < (int)accel.size(); ++i)
+        accel[i] = {0.0, 0.0};
 
-    // only loop pver fluid particles
-    for (int i : fluid_indices)
+        // only loop pver fluid particles
+#pragma omp parallel for schedule(static)
+    for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
     {
+        int i = fluid_indices[idx];
         Particle &pi = particles[i];
 
         double fx = 0.0, fy = 0.0;

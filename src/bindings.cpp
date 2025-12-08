@@ -4,11 +4,20 @@
 #include "particle.hpp"
 #include "integrator.hpp"
 
+#include <omp.h>
+
 namespace py = pybind11;
+
+
+void set_omp_threads(int n) {
+    omp_set_num_threads(n);
+}
 
 PYBIND11_MODULE(SimplePH, m)
 {
     m.doc() = "SimplePH minimal SPH module";
+
+    m.def("set_omp_threads", &set_omp_threads, "Set number of OpenMP threads");
 
     py::class_<Particle>(m, "Particle")
         .def(py::init<>())

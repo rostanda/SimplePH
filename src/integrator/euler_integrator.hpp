@@ -1,6 +1,8 @@
 #pragma once
 #include "integrator.hpp"
 
+#include <omp.h>
+
 class EulerIntegrator : public Integrator
 {
 public:
@@ -24,10 +26,12 @@ public:
         double Ly) override
     {
 
-        // only integrate fluid particles
-        for (int i : fluid_indices)
+// only integrate fluid particles
+#pragma omp parallel for schedule(static)
+        for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
         {
-            auto &pi = particles[i];
+            int i = fluid_indices[idx];
+            Particle &pi = particles[i];
 
             pi.v[0] += accel[i][0] * dt;
             pi.v[1] += accel[i][1] * dt;

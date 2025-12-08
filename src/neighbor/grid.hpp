@@ -2,8 +2,9 @@
 #include <vector>
 #include <array>
 #include <cmath>
-#include <unordered_set>
 #include <cstdio>
+#include <omp.h>
+
 #include "particle.hpp"
 #include "utils.hpp"
 
@@ -90,40 +91,76 @@ public:
             }
         }
     }
-
-    void clear()
-    {
-        for (auto &c : cells)
-            c.clear();
-    }
-
+    // build function using buffer per thread
     void build(const std::vector<Particle> &particles)
     {
-        clear();
+        const int N = particles.size();
 
-        for (int i = 0; i < (int)particles.size(); ++i)
+        // clear final cell arrays
+        for (auto &c : cells)
+            c.clear();
+
+        const int nCells = nx * ny;
+        const int nThreads = omp_get_max_threads();
+
+        // each thread builds its own cell buffers
+        std::vector<std::vector<std::vector<int>>> local_cells(
+            nThreads,
+            std::vector<std::vector<int>>(nCells));
+
+// parallel fill of buffer per thread
+#pragma omp parallel for schedule(static)
+        for (int i = 0; i < N; ++i)
         {
-            double xp = particles[i].x[0];
-            double yp = particles[i].x[1];
+            int tid = omp_get_thread_num();
 
             // periodic wrap to [0, L)
-            xp = fmod(xp, Lx);
+            double xp = fmod(particles[i].x[0], Lx);
             if (xp < 0)
                 xp += Lx;
-
-            yp = fmod(yp, Ly);
+            double yp = fmod(particles[i].x[1], Ly);
             if (yp < 0)
                 yp += Ly;
 
             int cx = int(xp / hx);
             int cy = int(yp / hy);
 
-            cells[cy * nx + cx].push_back(i);
+            local_cells[tid][cy * nx + cx].push_back(i);
         }
+
+        // merge local thread cells to final cells
+        for (int cell = 0; cell < nCells; ++cell)
+        {
+            size_t total = 0;
+            for (int t = 0; t < nThreads; ++t)
+                total += local_cells[t][cell].size();
+
+            cells[cell].reserve(total);
+
+            for (int t = 0; t < nThreads; ++t)
+                for (int pid : local_cells[t][cell])
+                    cells[cell].push_back(pid);
+        }
+
+        // build sorted order for better performance
+        sorted_ids.clear();
+        sorted_ids.reserve(N);
+
+        for (const auto &c : cells)
+            for (int pid : c)
+                sorted_ids.push_back(pid);
+
+        // build inverse map
+        inv_id.resize(N);
+        for (int pos = 0; pos < N; ++pos)
+            inv_id[sorted_ids[pos]] = pos;
     }
 
+    // neighbor search
     template <typename Func>
-    void find_neighbors(int pid, const std::vector<Particle> &particles, Func callback) const
+    void find_neighbors(int pid,
+                        const std::vector<Particle> &particles,
+                        Func callback) const
     {
         const Particle &p = particles[pid];
 
@@ -131,7 +168,6 @@ public:
         double xp = fmod(p.x[0], Lx);
         if (xp < 0)
             xp += Lx;
-
         double yp = fmod(p.x[1], Ly);
         if (yp < 0)
             yp += Ly;
@@ -139,31 +175,31 @@ public:
         int cx = int(xp / hx);
         int cy = int(yp / hy);
 
-        // search 3×3 neighborhood
-        for (int dy_cell = -1; dy_cell <= 1; ++dy_cell)
+        const int idx = cy * nx + cx;
+
+        // search 3×3 cell neighbors
+        for (int nb : cell_neighbors[idx])
         {
-            for (int dx_cell = -1; dx_cell <= 1; ++dx_cell)
+            const auto &cell = cells[nb];
+
+            for (int j : cell)
             {
-                int ncx = (cx + dx_cell + nx) % nx;
-                int ncy = (cy + dy_cell + ny) % ny;
+                if (j == pid)
+                    continue;
 
-                const auto &cell = cells[ncy * nx + ncx];
+                double dx = particles[j].x[0] - p.x[0];
+                double dy = particles[j].x[1] - p.x[1];
+                double r = min_image_dist(dx, dy, Lx, Ly);
 
-                for (int j : cell)
-                {
-                    if (j == pid)
-                        continue;
-
-                    double dx = particles[j].x[0] - p.x[0];
-                    double dy = particles[j].x[1] - p.x[1];
-
-                    double r = min_image_dist(dx, dy, Lx, Ly);
-                    if (r <= rcut)
-                        callback(pid, j, dx, dy, r);
-                }
+                if (r <= rcut)
+                    callback(pid, j, dx, dy, r);
             }
         }
     }
+
+public:
+    std::vector<int> sorted_ids;
+    std::vector<int> inv_id;
 
 private:
     double rcut, Lx, Ly;
