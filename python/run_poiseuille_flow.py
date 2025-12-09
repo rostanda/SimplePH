@@ -5,6 +5,20 @@ import os
 import pathlib
 import sys
 
+# threads for computing (default: 1)
+num_threads = 1
+
+# override via -np <N> as command line argument
+if "-np" in sys.argv:
+    idx = sys.argv.index("-np")
+    try:
+        num_threads = int(sys.argv[idx + 1])
+    except (IndexError, ValueError):
+        raise ValueError("Usage: script.py [-np N]")
+
+print(f"Setting {num_threads} OpenMP threads")
+SimplePH.set_omp_threads(num_threads)
+
 # create particle layout
 def create_particles():
     parts = []
@@ -32,22 +46,6 @@ def create_particles():
 
             parts.append(p)
     return parts
-
-# threads for computing (default: 1)
-num_threads = 1
-
-# override via -np <N> as command line argument
-if "-np" in sys.argv:
-    idx = sys.argv.index("-np")
-    try:
-        num_threads = int(sys.argv[idx + 1])
-    except (IndexError, ValueError):
-        raise ValueError("Usage: script.py [-np N]")
-
-print(f"Setting {num_threads} OpenMP threads")
-SimplePH.set_omp_threads(num_threads)
-SimplePH.test_threads()
-
 
 # geometry
 Lx = 0.1

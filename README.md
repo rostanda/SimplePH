@@ -11,8 +11,24 @@ mkdir -p build && cd build
 cmake ..
 make
 ```
-
 The Python extension is placed in `python/SimplePH.so`.
+
+### OpenMP Support
+
+SimplePH uses OpenMP to parallelize computationally expensive parts of the solver.
+OpenMP is enabled automatically when building the C++ code.
+
+To ensure support on your system:
+
+- **Linux (GCC/Clang)**:
+```bash
+sudo apt install libomp-dev
+```
+- **macOS (Clang via Homebrew):**:
+```bash
+brew install libomp
+```
+No Python dependencies are required for OpenMP.
 
 ### Run Example
 
@@ -22,6 +38,31 @@ python3 run_poiseuille_flow.py
 ```
 
 Output VTU files are written to `poiseuille_flow/`.
+
+### OpenMP Thread Control
+
+The example script `run_poiseuille_flow.py` allows you to manually set the number of OpenMP threads:
+
+```bash
+python3 run_poiseuille_flow.py -np 8
+```
+Inside the script, OpenMP threads are configured via:
+
+```bash
+import SimplePH
+
+num_threads = 1  # default
+
+if "-np" in sys.argv:
+    idx = sys.argv.index("-np")
+    num_threads = int(sys.argv[idx + 1])
+
+print(f"Setting {num_threads} OpenMP threads")
+SimplePH.set_omp_threads(num_threads)
+```
+
+If no `-np` argument is given, the solver uses 1 thread.
+To fully utilize your CPU, pass your number of physical cores.
 
 ### Plot Results
 
