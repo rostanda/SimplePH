@@ -32,14 +32,29 @@ class TestSolverInitialization:
         )
         assert solver is not None
 
-    def test_create_solver_wendland(self):
+    def test_create_solver_quintic_spline(self):
+        """Verify solver creation with QuinticSpline kernel."""
+        solver = SimplePH.Solver(
+            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
+            Lref=0.1, vref=1.0, kernel_type=SimplePH.KernelType.QuinticSpline
+        )
+        assert solver is not None
+
+    def test_create_solver_wendlandC2(self):
+        """Verify solver creation with WendlandC2 kernel."""
+        solver = SimplePH.Solver(
+            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
+            Lref=0.1, vref=1.0, kernel_type=SimplePH.KernelType.WendlandC2
+        )
+        assert solver is not None
+
+    def test_create_solver_wendlandC4(self):
         """Verify solver creation with WendlandC4 kernel."""
         solver = SimplePH.Solver(
             h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
             Lref=0.1, vref=1.0, kernel_type=SimplePH.KernelType.WendlandC4
         )
         assert solver is not None
-
 
 class TestMaterialProperties:
     """Test material property configuration."""

@@ -60,7 +60,7 @@ print("dx:", dx)
 
 # kernel params
 kappa = 2.0
-h = 1.7 * dx
+h = 1.3 * dx
 rcut = kappa * h
 
 print("h:", h)
@@ -96,7 +96,7 @@ print("vref:", vref)
 
 # Reynolds number
 vchar = (2/3) * vmax
-Lchar = Ly / 2
+Lchar = Lx / 2
 Re = (rho * vchar * Lchar) / mu
 print("Re:", Re)
 
@@ -111,7 +111,7 @@ solver = SimplePH.Solver(
     dx0=dx,
     Lref=Lref,
     vref=vref,
-    kernel_type=SimplePH.KernelType.WendlandC4
+    kernel_type=SimplePH.KernelType.WendlandC2
 )
 
 # set viscosity
@@ -121,7 +121,7 @@ solver.set_viscosity(mu)
 solver.set_density(rho, rho_fluct)
 
 # set body force
-solver.set_acceleration(b,0)
+solver.set_acceleration(b,100)
 
 # compute wavespeed
 solver.compute_soundspeed()
@@ -143,8 +143,11 @@ solver.set_integrator(SimplePH.VelocityVerletIntegrator())
 # solver.set_density_method(SimplePH.DensityMethod.Continuity)
 solver.set_density_method(SimplePH.DensityMethod.Summation)
 
+# use artificial viscosity
+solver.activate_artificial_viscosity(True,0.01)
+
 # run simulation
-output_name = "poiseuille_flow"
+output_name = "poiseuille_flow_av"
 
 # create output directory and write VTU files into it
 outdir = pathlib.Path(output_name)

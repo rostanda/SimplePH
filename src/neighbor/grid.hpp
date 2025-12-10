@@ -37,10 +37,10 @@ public:
             hy = Ly / ny;
         }
 
-        printf("Grid init: nx=%d ny=%d hx=%.3f hy=%.3f (rcut=%.3f)\n",
-               nx, ny, hx, hy, rcut);
+        // printf("Grid init: nx=%d ny=%d hx=%.3f hy=%.3f (rcut=%.3f)\n",
+        //        nx, ny, hx, hy, rcut);
 
-        printf("\n--- Cell bounds ---\n");
+        // printf("\n--- Cell bounds ---\n");
         for (int cy = 0; cy < ny; ++cy)
         {
             for (int cx = 0; cx < nx; ++cx)
@@ -52,15 +52,15 @@ public:
                 double y0 = cy * hy;
                 double y1 = (cy + 1) * hy;
 
-                printf("Cell %2d: cx=%d cy=%d  x:[%.3f, %.3f] y:[%.3f, %.3f]\n",
-                       idx, cx, cy, x0, x1, y0, y1);
+                // printf("Cell %2d: cx=%d cy=%d  x:[%.3f, %.3f] y:[%.3f, %.3f]\n",
+                //        idx, cx, cy, x0, x1, y0, y1);
             }
         }
 
         cells.resize(nx * ny);
         cell_neighbors.resize(nx * ny);
 
-        printf("\n--- Cell neighbors (9 per cell) ---\n");
+        // printf("\n--- Cell neighbors (9 per cell) ---\n");
 
         for (int cy = 0; cy < ny; ++cy)
         {
@@ -70,7 +70,7 @@ public:
                 int idx = cy * nx + cx;
                 int k = 0;
 
-                printf("Cell %2d neighbors:", idx);
+                // printf("Cell %2d neighbors:", idx);
 
                 for (int dy = -1; dy <= 1; ++dy)
                 {
@@ -83,11 +83,11 @@ public:
 
                         cell_neighbors[idx][k++] = nidx;
 
-                        printf(" %d", nidx);
+                        // printf(" %d", nidx);
                     }
                 }
 
-                printf("\n");
+                // printf("\n");
             }
         }
     }

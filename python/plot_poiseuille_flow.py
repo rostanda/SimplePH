@@ -97,9 +97,9 @@ def main():
         sys.exit(1)
 
     # Define timesteps (matches VTU filenames)
-    t_steps = [1000, 300, 200, 100]
+    t_steps = [5000, 1000, 500, 200]
 
-    dt = 0.009031250
+    dt = 0.002257813
     t_times = [t * dt for t in t_steps]
 
     # VTU directory

@@ -54,16 +54,6 @@ void VTKWriter::write(const std::vector<Particle> &particles, int /*step*/, cons
             f << " 0.0 0.0 0.0";
     }
     f << "\n        </DataArray>\n";
-
-    f << "        <DataArray type=\"Float64\" Name=\"pf\" format=\"ascii\">\n";
-    for (auto &p : particles)
-    {
-        if (p.pf.has_value())
-            f << " " << *p.pf;
-        else
-            f << " 0.0";
-    }
-    f << "\n        </DataArray>\n";
     f << "      </PointData>\n";
 
     // --- POINTS ---

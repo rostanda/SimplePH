@@ -1,6 +1,6 @@
 # SimplePH – Minimal SPH Solver
 
-A lightweight C++ implementation of a 2D weakly compressible Smoothed Particle Hydrodynamics (SPH) solver with Python bindings.
+A lightweight C++ implementation of a parallelized 2D weakly compressible Smoothed Particle Hydrodynamics (SPH) solver with Python bindings.
 
 ## Quick Start
 
@@ -78,7 +78,7 @@ SimplePH solves the incompressible Navier–Stokes equations in 2D using weakly 
 
 - **Simulation**: 2D fluid particles with pressure & viscous forces, periodic boundaries
 - **Physics**: Configurable EOS (Tait, Linear) and density methods (Summation, Continuity)
-- **Kernels**: Cubic Spline and Wendland C4 smoothing kernels
+- **Kernels**: Cubic Spline, Quintic Spline, Wendland C2 and Wendland C4 smoothing kernels
 - **Integration**: Velocity Verlet and Euler time stepping schemes
 - **Spatial Index**: Cell-linked neighbor search for efficiency
 - **Visualization**: VTK output for ParaView, Python plotting utilities
@@ -151,7 +151,7 @@ Tests verify:
 ## Performance
 
 - Neighbor search: $O(n)$ per step via grid-based spatial indexing
-- Force computation: $O(n \cdot k)$ where $k \approx 30$ (average neighbors)
+- Force computation: $O(n \cdot k)$ where $k \approx 30$ dependent on chosen kernel (average neighbors)
 
 ## References
 

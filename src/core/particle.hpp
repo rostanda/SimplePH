@@ -13,5 +13,4 @@ struct Particle
     std::optional<double> drho_dt; // optional for continuity density approach
 
     std::optional<std::array<double, 2>> vf; // fictitious velocity for BC
-    std::optional<double> pf;                // fictitious pressure Boundary
 };

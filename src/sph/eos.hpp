@@ -26,8 +26,9 @@ public:
     EOS(EOSType type, double rho0, double c, double bp_fac = 0.0)
         : type(type), rho0(rho0), c(c), bp_fac(bp_fac)
     {
-        if (bp_fac != 0.0)
-            bp = bp_fac * rho0 * c * c;
+        bp = (bp_fac != 0.0) ? bp_fac * rho0 * c * c : 0.0;
+        // if (bp_fac != 0.0)
+        //     bp = bp_fac * rho0 * c * c;
     }
 
     double pressure_from_density(double rho) const
@@ -48,13 +49,15 @@ public:
         switch (type)
         {
         case EOSType::Tait:
-            return rho0 * std::pow((p - bp) * (7.0 / (rho0 * c * c)) + 1, 1 / 7);
+            return rho0 * std::pow((p - bp) * (7.0 / (rho0 * c * c)) + 1, 1.0 / 7.0);
         case EOSType::Linear:
             return (p - bp) / (c * c) + rho0;
         default:
             throw std::logic_error("Unhandled EOS type");
         }
     }
+
+    double get_bp() const { return bp; }
 
 private:
     EOSType type;

@@ -36,8 +36,11 @@ PYBIND11_MODULE(SimplePH, m)
         .def_readwrite("rho0", &Solver::rho0)
         .def_readwrite("rho_fluct", &Solver::rho_fluct)
         .def("set_particles", &Solver::set_particles)
-        .def("set_acceleration", &Solver::set_acceleration,
-             "Set constant acceleration vector b = [bx, by]")
+        .def("set_acceleration", 
+            &Solver::set_acceleration,
+            py::arg("b_") = std::array<double,2>{0.0, 0.0},
+            py::arg("damp_timesteps_") = 0,
+            "Set constant acceleration vector b = [bx, by], with optional damping timesteps")
         .def("set_viscosity", &Solver::set_viscosity)
         .def("set_viscosity", &Solver::set_viscosity,
              py::arg("mu"))
@@ -56,11 +59,15 @@ PYBIND11_MODULE(SimplePH, m)
         .def("set_density_method", &Solver::set_density_method)
         .def("set_particles", &Solver::set_particles)
         .def("set_integrator", &Solver::set_integrator)
+        .def("activate_artificial_viscosity", &Solver::activate_artificial_viscosity,
+             py::arg("activate"), py::arg("alpha") = 1.0)
         .def("get_particles", &Solver::get_particles,
              py::return_value_policy::reference_internal);
 
     py::enum_<KernelType>(m, "KernelType")
         .value("CubicSpline", KernelType::CubicSpline)
+        .value("QuinticSpline", KernelType::QuinticSpline)
+        .value("WendlandC2", KernelType::WendlandC2)
         .value("WendlandC4", KernelType::WendlandC4)
         .export_values();
 

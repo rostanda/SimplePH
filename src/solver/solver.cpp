@@ -38,12 +38,10 @@ void Solver::set_particles(const std::vector<Particle> &parts)
         if (p.type == 1)
         {
             p.vf = {0.0, 0.0};
-            p.pf = 0.0;
         }
         else
         {
             p.vf = std::nullopt;
-            p.pf = std::nullopt;
         }
     }
 
@@ -85,7 +83,11 @@ void Solver::set_density(double rho0_, double rho_fluct_)
 }
 
 // set body force
-void Solver::set_acceleration(const std::array<double, 2> &b_) { b = b_; }
+void Solver::set_acceleration(const std::array<double, 2> &b_, int damp_timesteps_)
+{
+    b = b_;
+    damp_timesteps = damp_timesteps_;
+}
 
 // compute soundspeed
 void Solver::compute_soundspeed()
@@ -111,17 +113,31 @@ void Solver::compute_timestep()
     printf("timestep: dt=%.9f\n", dt);
 }
 
+// compute timestep
+void Solver::compute_timestep_AV(double mu_eff)
+{
+    std::vector<double> candidates;
+    candidates.push_back(0.25 * h / c); // CFL
+    double b_mag = std::sqrt(b[0] * b[0] + b[1] * b[1]);
+    if (b_mag > 0.0)
+        candidates.push_back(std::sqrt(h / (16.0 * b_mag))); // gravity-wave
+    candidates.push_back((h * h * rho0) / (8.0 * mu_eff));       // Fourier
+    dt = *std::min_element(candidates.begin(), candidates.end());
+    printf("timestep: dt=%.9f\n", dt);
+}
+
 // set EOS
-void Solver::set_eos(EOSType eos_type_, double bp_) { eos = EOS(eos_type_, rho0, c, bp_); }
+void Solver::set_eos(EOSType eos_type_, double bp_fac_) { eos = EOS(eos_type_, rho0, c, bp_fac_); }
 
 // get particles
 const std::vector<Particle> &Solver::get_particles() const { return particles; }
 
 // solve one timestep
-void Solver::step()
+void Solver::step(int timestep)
 {
-    if (density_method == DensityMethod::Continuity)
-        compute_density_continuity();
+
+    // compute effective (possibly damped) body force for this timestep
+    this->b_eff = compute_effective_body_force(timestep);
     integrator->step1(particles, fluid_indices, accel, dt, Lx, Ly);
     update_neighbors();
     if (density_method == DensityMethod::Summation)
@@ -129,6 +145,8 @@ void Solver::step()
     compute_pressure();
     compute_boundaryconditions();
     compute_forces();
+    if (density_method == DensityMethod::Continuity)
+        compute_density_continuity();
     integrator->step2(particles, fluid_indices, accel, dt, Lx, Ly);
 }
 
@@ -154,7 +172,7 @@ void Solver::run(int steps, int vtk_freq, int log_freq)
             std::cout << "Step " << i << std::endl;
         if (log_freq > 0)
             log_counter = (log_counter + 1) % log_freq;
-        step();
+        step(i);
 
         auto step_end = std::chrono::high_resolution_clock::now();
         double step_time = std::chrono::duration<double>(step_end - step_start).count();
@@ -190,6 +208,20 @@ void Solver::update_neighbors()
     }
 }
 
+std::array<double, 2> Solver::compute_effective_body_force(int timestep) const
+{
+    std::array<double, 2> b_eff_local = b; // Basis-Body-Force
+    if (damp_timesteps > 0 && timestep < damp_timesteps)
+    {
+        double t = static_cast<double>(timestep);
+        double m_damptime = static_cast<double>(damp_timesteps);
+        double scalar = 0.5 * (std::sin(M_PI * (-0.5 + t / m_damptime)) + 1.0);
+        b_eff_local[0] *= scalar;
+        b_eff_local[1] *= scalar;
+    }
+    return b_eff_local;
+}
+
 // compute density summation (rho_i = sum_j m_j W(r_ij))
 void Solver::compute_density_summation()
 {
@@ -204,8 +236,8 @@ void Solver::compute_density_summation()
         for (int j : neighbors[i])
         {
             Particle &pj = particles[j];
-            double dx = pj.x[0] - pi.x[0];
-            double dy = pj.x[1] - pi.x[1];
+            double dx = pi.x[0] - pj.x[0];
+            double dy = pi.x[1] - pj.x[1];
             double r = min_image_dist(dx, dy, Lx, Ly);
             rho += pj.m * kernel.getW(r, h);
         }
@@ -237,16 +269,17 @@ void Solver::compute_density_continuity()
         for (int j : neighbors[i])
         {
             Particle &pj = particles[j];
-            if (pj.type == 1)
-                continue;
 
             double dx = pi.x[0] - pj.x[0];
             double dy = pi.x[1] - pj.x[1];
             double r = min_image_dist(dx, dy, Lx, Ly);
             double dW = kernel.getdW(r, h) / r;
 
-            const double dvx = vi_x - pj.v[0];
-            const double dvy = vi_y - pj.v[1];
+            const double vj_x = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[0] : pj.v[0];
+            const double vj_y = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[1] : pj.v[1];
+
+            const double dvx = vi_x - vj_x;
+            const double dvy = vi_y - vj_y;
 
             drho_dt_i += (pj.m / pj.rho) * (dvx * dW * dx + dvy * dW * dy);
         }
@@ -282,8 +315,7 @@ void Solver::compute_boundaryconditions()
 
         if (!pi.vf.has_value())
             pi.vf = {0.0, 0.0};
-        if (!pi.pf.has_value())
-            pi.pf = 0.0;
+        pi.p = 0.0;
 
         double vfx = 0.0, vfy = 0.0, pf = 0.0, Wi = 0.0, phx = 0.0, phy = 0.0;
         unsigned int neighbor_count = 0;
@@ -296,8 +328,9 @@ void Solver::compute_boundaryconditions()
             if (pj.type == 1)
                 continue;
 
-            double dx = pj.x[0] - pi.x[0];
-            double dy = pj.x[1] - pi.x[1];
+            double dx = pi.x[0] - pj.x[0];
+            double dy = pi.x[1] - pj.x[1];
+
             double r = min_image_dist(dx, dy, Lx, Ly);
             double Wij = kernel.getW(r, h);
 
@@ -314,17 +347,20 @@ void Solver::compute_boundaryconditions()
         {
             vfx = vfx / Wi + 2.0 * pi.v[0];
             vfy = vfy / Wi + 2.0 * pi.v[1];
-            pf = pf / Wi + b[0] * (phx / Wi) + b[1] * (phy / Wi);
+            // pf = pf / Wi + b[0] * (phx / Wi) + b[1] * (phy / Wi);
+            pf = pf / Wi + this->b_eff[0] * (phx / Wi) + this->b_eff[1] * (phy / Wi);
+            (*pi.vf)[0] = vfx;
+            (*pi.vf)[1] = vfy;
+            pi.p = pf;
             pi.rho = eos.density_from_pressure(pi.p);
         }
         else
         {
+            (*pi.vf)[0] = 0.0;
+            (*pi.vf)[1] = 0.0;
+            pi.p = eos.get_bp();
             pi.rho = rho0;
         }
-
-        (*pi.vf)[0] = vfx;
-        (*pi.vf)[1] = vfy;
-        *pi.pf = pf;
     }
 }
 
@@ -335,7 +371,7 @@ void Solver::compute_forces()
     for (int i = 0; i < (int)accel.size(); ++i)
         accel[i] = {0.0, 0.0};
 
-        // only loop pver fluid particles
+    // only loop pver fluid particles
 #pragma omp parallel for schedule(static)
     for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
     {
@@ -355,7 +391,8 @@ void Solver::compute_forces()
 
             const double vj_x = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[0] : pj.v[0];
             const double vj_y = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[1] : pj.v[1];
-            const double p_j = (pj.type == 1 && pj.pf.has_value()) ? *pj.pf : pj.p;
+            const double p_j = pj.p;
+
             const double rho_j = pj.rho;
             const double Vj = pj.m / rho_j;
 
@@ -372,16 +409,32 @@ void Solver::compute_forces()
 
             const double dvx = vi_x - vj_x;
             const double dvy = vi_y - vj_y;
-            const double visc_fac = dW * dx * dx + dW * dy * dy;
 
             // avoid division by zero when r is extremely small
-            const double r2 = (r > 0.0) ? (r * r) : 1e-12;
+            // const double r2 = (r > 0.0) ? (r * r) : 1e-12;
+            const double r2 = r * r + 0.01 * h * h;
+
+            // if (use_artificial_viscosity)
+            if (use_artificial_viscosity and pj.type == 0)
+            {
+                // artificial viscosity (Monaghan 1992)
+
+                double vr = dvx * dx + dvy * dy;
+                if (vr < 0.0)
+                {
+                    double pi_ab = -alpha * pj.m * h * c / ((rho_i + rho_j) / 2) * (vr / r2);
+                    fx += pi_ab * dx * dW;
+                    fy += pi_ab * dy * dW;
+                }
+            }
+
+            const double visc_fac = dW * dx * dx + dW * dy * dy;
             fx += (mu * Vij_sqr * visc_fac / r2) * dvx;
             fy += (mu * Vij_sqr * visc_fac / r2) * dvy;
         }
 
-        // compute acceleration and add body force
-        accel[i][0] = fx / pi.m + b[0];
-        accel[i][1] = fy / pi.m + b[1];
+        // compute acceleration and add (possibly damped) body force
+        accel[i][0] = fx / pi.m + this->b_eff[0];
+        accel[i][1] = fy / pi.m + this->b_eff[1];
     }
 }

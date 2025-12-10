@@ -18,17 +18,35 @@ public:
     Solver(double h, double Lx, double Ly, double dx0, double Lref, double vref, KernelType kernel_type);
 
     void set_particles(const std::vector<Particle> &parts);
-    void step();
+    void step(int timestep);
     void run(int steps, int vtk_freq, int log_freq);
     const std::vector<Particle> &get_particles() const;
 
     void set_viscosity(double mu_);
     void set_density(double rho0_, double rho_fluct_);
-    void set_acceleration(const std::array<double, 2> &b_);
+    void set_acceleration(const std::array<double, 2> &b_, int damp_timesteps_ = 0);
     void compute_soundspeed();
     void compute_timestep();
+    void compute_timestep_AV(double mu_eff);
     void set_eos(EOSType eos_type_, double bp_fac_);
     void set_integrator(std::shared_ptr<Integrator> integrator_) { this->integrator = integrator_; }
+    void activate_artificial_viscosity(bool activate, double alpha_ = 1.0)
+    {
+        use_artificial_viscosity = activate;
+        alpha = alpha_;
+        double mu_eff = 0.0;
+        if (mu==0.0)
+        {
+            mu_eff = rho0 *  (1.0/8.0) * alpha * h * c;
+            printf("mu_eff (AV): %.6f\n", mu_eff);
+        }
+        if (mu>0.0)
+        {
+            mu_eff = rho0 * (1.0/8.0) * alpha * h * c + mu;
+            printf("mu_eff (mu+AV): %.6f\n", mu_eff);
+        }
+        compute_timestep_AV(mu_eff);
+    }
 
     enum class DensityMethod
     {
@@ -39,10 +57,12 @@ public:
 
     friend void print_neighbor_counts(Solver &solver);
 
-    std::array<double, 2> b = {0.0, 0.0};
+    int damp_timesteps;
     double mu;
     double rho0;
     double rho_fluct;
+
+    std::array<double, 2> b = {0.0, 0.0};
 
 private:
     double h;
@@ -53,6 +73,13 @@ private:
     double c;
     double dt;
 
+    // effective (possibly damped) body force for the current timestep
+    std::array<double, 2> compute_effective_body_force(int timestep) const;
+    std::array<double, 2> b_eff = {0.0, 0.0};
+
+    bool use_artificial_viscosity = false;
+    double alpha = 1.0;   // artificial viscosity alpha
+    
     Kernel kernel;
     Grid grid;
     EOS eos{EOSType::Tait, rho0, c, 0.0};
