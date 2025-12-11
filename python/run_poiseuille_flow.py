@@ -88,7 +88,7 @@ print("V:", V)
 b = [0.0024, 0.0]
 
 # reference values
-vmax = b[0] * Lx**2 * 0.25 / (mu / rho)
+vmax = (rho * b[0] * (Ly/2)**2) / (2 * mu)
 vref = vmax
 Lref = Ly
 

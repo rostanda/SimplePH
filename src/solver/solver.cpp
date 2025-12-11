@@ -121,7 +121,7 @@ void Solver::compute_timestep_AV(double mu_eff)
     double b_mag = std::sqrt(b[0] * b[0] + b[1] * b[1]);
     if (b_mag > 0.0)
         candidates.push_back(std::sqrt(h / (16.0 * b_mag))); // gravity-wave
-    candidates.push_back((h * h * rho0) / (8.0 * mu_eff));       // Fourier
+    candidates.push_back((h * h * rho0) / (8.0 * mu_eff));   // Fourier
     dt = *std::min_element(candidates.begin(), candidates.end());
     printf("timestep: dt=%.9f\n", dt);
 }
@@ -299,7 +299,9 @@ void Solver::compute_pressure()
     {
         int i = fluid_indices[idx];
         Particle &pi = particles[i];
-        pi.p = eos.pressure_from_density(pi.rho);
+        // pi.p = eos.pressure_from_density(pi.rho);
+        double p = eos.pressure_from_density(pi.rho);
+        pi.p = std::max(p, 0.0);
     }
 }
 
@@ -364,7 +366,7 @@ void Solver::compute_boundaryconditions()
     }
 }
 
-// compute particle forces (pressure + viscous terms)
+// compute particle forces (pressure ( + artificial viscosity) + viscous terms)
 void Solver::compute_forces()
 {
 #pragma omp parallel for schedule(static)
@@ -402,35 +404,35 @@ void Solver::compute_forces()
             double dW = kernel.getdW(r, h) / r;
 
             const double Vij_sqr = Vi * Vi + Vj * Vj;
-            const double p_fac = (rho_j * p_i + rho_i * p_j) / (rho_i + rho_j);
 
-            fx -= Vij_sqr * p_fac * dW * dx;
-            fy -= Vij_sqr * p_fac * dW * dy;
+            // pressure force
+            const double p_fac = Vij_sqr * (rho_j * p_i + rho_i * p_j) / (rho_i + rho_j);
+            fx -= p_fac * dW * dx;
+            fy -= p_fac * dW * dy;
 
             const double dvx = vi_x - vj_x;
             const double dvy = vi_y - vj_y;
 
             // avoid division by zero when r is extremely small
-            // const double r2 = (r > 0.0) ? (r * r) : 1e-12;
-            const double r2 = r * r + 0.01 * h * h;
+            const double r_sqr = r * r + 0.01 * h * h;
 
             // if (use_artificial_viscosity)
             if (use_artificial_viscosity and pj.type == 0)
             {
                 // artificial viscosity (Monaghan 1992)
-
                 double vr = dvx * dx + dvy * dy;
                 if (vr < 0.0)
                 {
-                    double pi_ab = -alpha * pj.m * h * c / ((rho_i + rho_j) / 2) * (vr / r2);
-                    fx += pi_ab * dx * dW;
-                    fy += pi_ab * dy * dW;
+                    double artvisc_fac = -(pi.m * pj.m * alpha * h * c * vr) / (((rho_i + rho_j) / 2) * r_sqr);
+                    fx -= artvisc_fac * dW * dx;
+                    fy -= artvisc_fac * dW * dy;
                 }
             }
 
-            const double visc_fac = dW * dx * dx + dW * dy * dy;
-            fx += (mu * Vij_sqr * visc_fac / r2) * dvx;
-            fy += (mu * Vij_sqr * visc_fac / r2) * dvy;
+            // viscous force
+            const double visc_fac =  Vij_sqr *  mu;
+            fx += visc_fac * dW * dvx;
+            fy += visc_fac * dW * dvy;
         }
 
         // compute acceleration and add (possibly damped) body force
