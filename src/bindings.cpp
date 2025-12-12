@@ -61,6 +61,8 @@ PYBIND11_MODULE(SimplePH, m)
         .def("set_integrator", &Solver::set_integrator)
         .def("activate_artificial_viscosity", &Solver::activate_artificial_viscosity,
              py::arg("activate"), py::arg("alpha") = 1.0)
+        .def("activate_tensile_instability_correction", &Solver::activate_tensile_instability_correction,
+             py::arg("activate"), py::arg("epsilon") = 0.2)
         .def("get_particles", &Solver::get_particles,
              py::return_value_policy::reference_internal);
 

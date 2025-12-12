@@ -156,7 +156,8 @@ Tests verify:
 ## References
 
 The SPH discretization follows standard formulations from:
-
+- Monaghan, J. J. (1992). Smoothed particle hydrodynamics. In: Annual review of astronomy and astrophysics. Vol. 30 (A93-25826 09-90), p. 543-574., 30, 543-574.
+- Monaghan, J. J. (2000). SPH without a tensile instability. Journal of computational physics, 159(2), 290-311.
 - Monaghan, J. J. (2005). Smoothed particle hydrodynamics. Reports on progress in physics, 68(8), 1703.
 - Hu, X. Y., & Adams, N. A. (2007). An incompressible multi-phase SPH method. Journal of computational physics, 227(1), 264-278.
 - Adami, S., Hu, X. Y., & Adams, N. A. (2012). A generalized wall boundary condition for smoothed particle hydrodynamics. Journal of Computational Physics, 231(21), 7057-7075.

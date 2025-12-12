@@ -34,6 +34,9 @@ public:
     {
         use_artificial_viscosity = activate;
         alpha = alpha_;
+
+        printf("artificial viscosity activated");
+        
         double mu_eff = 0.0;
         if (mu==0.0)
         {
@@ -47,6 +50,14 @@ public:
         }
         compute_timestep_AV(mu_eff);
     }
+
+    void activate_tensile_instability_correction(bool activate, double epsilon_ = 0.2)
+    {
+        use_tensile_instability_correction = activate;
+        epsilon = epsilon_;
+            printf("tensile instability correction activated");
+    }
+
 
     enum class DensityMethod
     {
@@ -78,8 +89,10 @@ private:
     std::array<double, 2> b_eff = {0.0, 0.0};
 
     bool use_artificial_viscosity = false;
-    double alpha = 1.0;   // artificial viscosity alpha
-    
+    double alpha;   // artificial viscosity alpha
+    bool use_tensile_instability_correction = false;
+    double epsilon; // tensile instability correction epsilon
+
     Kernel kernel;
     Grid grid;
     EOS eos{EOSType::Tait, rho0, c, 0.0};

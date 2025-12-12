@@ -301,7 +301,8 @@ void Solver::compute_pressure()
         Particle &pi = particles[i];
         // pi.p = eos.pressure_from_density(pi.rho);
         double p = eos.pressure_from_density(pi.rho);
-        pi.p = std::max(p, 0.0);
+        // pi.p = std::max(p, 0.0);
+        pi.p = p;
     }
 }
 
@@ -366,7 +367,7 @@ void Solver::compute_boundaryconditions()
     }
 }
 
-// compute particle forces (pressure ( + artificial viscosity) + viscous terms)
+// compute particle forces (pressure ( + tensile instability correction + artificial viscosity) + viscous terms)
 void Solver::compute_forces()
 {
 #pragma omp parallel for schedule(static)
@@ -413,6 +414,25 @@ void Solver::compute_forces()
             const double dvx = vi_x - vj_x;
             const double dvy = vi_y - vj_y;
 
+            // if (use_tensile_instability_correction)
+            if (use_tensile_instability_correction && pj.type == 0)
+            {
+                // tensile instability correction (Monaghan 2000)
+                double Wij = kernel.getW(r, h);
+                double W_dp = kernel.getW(dx0, h);
+                double fij = Wij / W_dp;
+                double fij_fourp = fij * fij * fij * fij;
+
+                double tilde_pi = (p_i >= 0.0) ? 0.01 * p_i : epsilon * std::abs(p_i);
+                double tilde_pj = (p_j >= 0.0) ? 0.01 * p_j : epsilon * std::abs(p_j);
+
+                double tensile_p_fac = Vij_sqr * (rho_j * tilde_pi + rho_i * tilde_pj) / (rho_i + rho_j);
+                tensile_p_fac *= fij_fourp;
+
+                fx -= tensile_p_fac * dW * dx;
+                fy -= tensile_p_fac * dW * dy;
+            }
+
             // avoid division by zero when r is extremely small
             const double r_sqr = r * r + 0.01 * h * h;
 
@@ -430,7 +450,7 @@ void Solver::compute_forces()
             }
 
             // viscous force
-            const double visc_fac =  Vij_sqr *  mu;
+            const double visc_fac = Vij_sqr * mu;
             fx += visc_fac * dW * dvx;
             fy += visc_fac * dW * dvy;
         }

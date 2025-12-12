@@ -53,7 +53,7 @@ Ly = 0.1
 
 # resolution
 res = 40
-dx = Lx / res
+dx = Ly / res
 
 print("res:", res)
 print("dx:", dx)
@@ -142,6 +142,13 @@ solver.set_integrator(SimplePH.VelocityVerletIntegrator())
 # density method
 # solver.set_density_method(SimplePH.DensityMethod.Continuity)
 solver.set_density_method(SimplePH.DensityMethod.Summation)
+
+# use artificial viscosity
+# solver.activate_artificial_viscosity(True,0.01)
+
+# use artificial viscosity
+# solver.activate_tensile_instability_correction(True)
+
 
 # run simulation
 output_name = "poiseuille_flow"
