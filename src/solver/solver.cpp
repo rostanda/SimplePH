@@ -153,6 +153,8 @@ void Solver::step(int timestep)
 // run simulation
 void Solver::run(int steps, int vtk_freq, int log_freq)
 {
+    std::cout << "\n=== Start simulation ===" << std::endl;
+
     if (vtk_freq <= 0)
         vtk_freq = 1;
     if (log_freq < 0)

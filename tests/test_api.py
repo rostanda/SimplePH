@@ -11,7 +11,6 @@ Tests verify basic functionality:
 - Basic simulation execution without crashes
 """
 
-import math
 import sys
 import os
 
@@ -224,6 +223,31 @@ class TestStabilityParameters:
         solver.compute_timestep()
         # No exception = test passes
 
+class TestAdvancedSolverFeatures:
+    """Test advanced solver features like AV, tensile correction, OpenMP threads."""
+
+    def test_activate_artificial_viscosity(self):
+        solver = SimplePH.Solver(
+            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
+            Lref=0.1, vref=0.01,
+            kernel_type=SimplePH.KernelType.CubicSpline
+        )
+        solver.set_density(1000.0, 0.01)
+        solver.set_viscosity(1.0)
+        solver.compute_soundspeed()
+        solver.compute_timestep()
+        solver.activate_artificial_viscosity(True, alpha=1.5)  # Test AV activation
+
+    def test_activate_tensile_instability_correction(self):
+        solver = SimplePH.Solver(
+            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
+            Lref=0.1, vref=0.01,
+            kernel_type=SimplePH.KernelType.CubicSpline
+        )
+        solver.activate_tensile_instability_correction(True, epsilon=0.3)
+
+    def test_set_omp_threads(self):
+        SimplePH.set_omp_threads(2)  # Test setting OpenMP threads
 
 class TestSimulationExecution:
     """Test that simulations can run without errors."""
@@ -267,7 +291,7 @@ class TestSimulationExecution:
         final = solver.get_particles()
         assert len(final) == 3
 
-
+# Direct execution support
 if __name__ == '__main__':
     print("Running SimplePH unit tests...\n")
     
@@ -277,6 +301,7 @@ if __name__ == '__main__':
         TestPhysicsConfiguration,
         TestParticles,
         TestStabilityParameters,
+        TestAdvancedSolverFeatures,
         TestSimulationExecution,
     ]
     

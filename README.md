@@ -134,19 +134,20 @@ solver.run(steps=100, vtk_freq=10, log_freq=10)
 
 ## Testing
 
-Run the test suite:
+SimplePH includes a comprehensive test suite to ensure correctness, stability, and physical validity. The tests cover:
+
+- **Unit Tests** – verify solver initialization, material property setters, particle creation, equation of state and integrator selection, and basic simulation execution.
+- **Physics Invariants Tests** – validate mass conservation, density fluctuations, momentum symmetry, and periodic boundary handling.
+- **Physical Flow Tests** – long-running convergence studies for standard flows (Poiseuille and Couette) with VTU output and L2-norm error comparison against analytical solutions.
+
+### Running the Test Suite
+
+Run all tests using pytest from the `tests/` directory:
 
 ```bash
 cd tests
 python3 -m pytest -v
 ```
-
-Tests verify:
-- Solver initialization and configuration
-- Material property setters
-- Particle creation and access
-- Equation of state and integrator selection
-- Basic simulation execution
 
 ## Performance
 
