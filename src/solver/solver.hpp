@@ -65,6 +65,12 @@ public:
             printf("XSph filter activated (only use with velocity Verlet integrator)");
     }
 
+    void activate_negative_pressure_truncation(bool activate)
+    {
+        use_negative_pressure_truncation = activate;
+            printf("negative pressure truncation activated");
+    }
+
     enum class DensityMethod
     {
         Summation,
@@ -100,6 +106,7 @@ private:
     double epsilon; // tensile instability correction epsilon
     bool use_xsph_filter = true;
     double eta;   // xsph filter pre-factor
+    bool use_negative_pressure_truncation = false;
 
     Kernel kernel;
     Grid grid;

@@ -1,5 +1,6 @@
 #pragma once
 #include "integrator.hpp"
+#include "utils.hpp"
 
 #include <omp.h>
 
@@ -48,6 +49,10 @@ public:
                 pi.x[1] -= Ly;
             if (pi.x[1] < -Ly / 2)
                 pi.x[1] += Ly;
+
+            // check for NaN or Inf
+            abort_if_not_finite(pi.x[0], pi.x[1], i);
+
         }
     }
 };

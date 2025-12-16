@@ -65,6 +65,8 @@ PYBIND11_MODULE(SimplePH, m)
              py::arg("activate"), py::arg("epsilon") = 0.2)
         .def("activate_xsph_filter", &Solver::activate_xsph_filter,
              py::arg("activate"), py::arg("eta") = 0.1)
+        .def("activate_negative_pressure_truncation", &Solver::activate_negative_pressure_truncation,
+             py::arg("activate"))
         .def("get_particles", &Solver::get_particles,
              py::return_value_policy::reference_internal);
 

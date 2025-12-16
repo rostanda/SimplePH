@@ -2,10 +2,12 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <deque>
 #include "solver.hpp"
 #include "kernel.hpp"
 #include "utils.hpp"
 #include "integrator.hpp"
+#include "terminal.hpp"
 
 // include OpenMP for parallelization
 #include <omp.h>
@@ -160,7 +162,10 @@ void Solver::step(int timestep)
 // run simulation
 void Solver::run(int steps, int vtk_freq, int log_freq)
 {
-    std::cout << "\n=== Start simulation ===" << std::endl;
+    std::cout << "\n===== Start simulation =====" << std::endl;
+
+    bool first_log = true;
+    constexpr int STATUS_LINES = 2;
 
     if (vtk_freq <= 0)
         vtk_freq = 1;
@@ -170,6 +175,9 @@ void Solver::run(int steps, int vtk_freq, int log_freq)
     int vtk_counter = 0, log_counter = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
 
+    const int eta_window = 50;
+    std::deque<double> step_times;
+
     for (int i = 0; i < steps; ++i)
     {
         auto step_start = std::chrono::high_resolution_clock::now();
@@ -177,8 +185,6 @@ void Solver::run(int steps, int vtk_freq, int log_freq)
         if (vtk_counter == 0)
             VTKWriter::write(particles, i);
         vtk_counter = (vtk_counter + 1) % vtk_freq;
-        if (log_freq > 0 && log_counter == 0)
-            std::cout << "Step " << i << std::endl;
         if (log_freq > 0)
             log_counter = (log_counter + 1) % log_freq;
         step(i);
@@ -186,11 +192,37 @@ void Solver::run(int steps, int vtk_freq, int log_freq)
         auto step_end = std::chrono::high_resolution_clock::now();
         double step_time = std::chrono::duration<double>(step_end - step_start).count();
 
+        step_times.push_back(step_time);
+        if (step_times.size() > eta_window)
+            step_times.pop_front();
+
+        double avg_step_time = 0.0;
+        for (double t : step_times) avg_step_time += t;
+        avg_step_time /= step_times.size();
+
+        int remaining_steps = steps - (i + 1);
+        double eta_sec = remaining_steps * avg_step_time;
+
         auto current_time = std::chrono::high_resolution_clock::now();
         double elapsed = std::chrono::duration<double>(current_time - start_time).count();
 
-        if (log_freq > 0 && log_counter == 1)
-            std::cout << "  Iteration time: " << step_time << "s | Total elapsed: " << elapsed << "s" << std::endl;
+        if (log_freq > 0 && log_counter == 0)
+        {
+            if (!first_log)
+                terminal::clear_lines(STATUS_LINES);
+            first_log = false;
+
+            double progress = 100.0 * (i + 1) / steps;
+
+            std::cout
+                << "Step " << (i + 1) << " / " << steps
+                << " (" << std::fixed << std::setprecision(1) << progress << "%)\n"
+                << "iter: " << std::setprecision(4) << step_time << " s"
+                << " | avg: " << avg_step_time << " s"
+                << " | ETA: " << format_time(eta_sec) << "\n";
+
+            terminal::flush();
+        }
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -198,7 +230,7 @@ void Solver::run(int steps, int vtk_freq, int log_freq)
     std::cout << "\n=== Simulation completed ===" << std::endl;
     std::cout << "Total time: " << total_elapsed_time << "s" << std::endl;
     std::cout << "Total steps: " << steps << std::endl;
-    std::cout << "Average time per step: " << (total_elapsed_time / steps) << "s" << std::endl;
+    std::cout << "Average time per iter: " << (total_elapsed_time / steps) << "s" << std::endl;
 }
 
 // update neighbor list
@@ -310,7 +342,8 @@ void Solver::compute_pressure()
         Particle &pi = particles[i];
         // pi.p = eos.pressure_from_density(pi.rho);
         double p = eos.pressure_from_density(pi.rho);
-        // pi.p = std::max(p, 0.0);
+        if (use_negative_pressure_truncation)
+            p = std::max(p, 0.0);   
         pi.p = p;
     }
 }

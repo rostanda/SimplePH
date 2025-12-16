@@ -164,6 +164,6 @@ cwd = os.getcwd()
 try:
     os.chdir(outdir)
     print(f"Writing VTU output into: {outdir.resolve()}")
-    solver.run(5001, vtk_freq=100, log_freq=50)
+    solver.run(101, vtk_freq=100, log_freq=50)
 finally:
     os.chdir(cwd)
