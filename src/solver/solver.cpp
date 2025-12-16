@@ -51,6 +51,11 @@ void Solver::set_particles(const std::vector<Particle> &parts)
             p.drho_dt = std::nullopt;
         else if (density_method == DensityMethod::Continuity)
             p.drho_dt = 0.0;
+
+        if (use_xsph_filter)
+            p.vxsph = {0.0, 0.0};
+        else
+            p.vxsph = std::nullopt;
     }
 }
 
@@ -144,6 +149,8 @@ void Solver::step(int timestep)
         compute_density_summation();
     compute_pressure();
     compute_boundaryconditions();
+    if (use_xsph_filter)
+        compute_xsph_velocity_correction();
     compute_forces();
     if (density_method == DensityMethod::Continuity)
         compute_density_continuity();
@@ -369,6 +376,57 @@ void Solver::compute_boundaryconditions()
     }
 }
 
+// compute xsph velocity correction
+void Solver::compute_xsph_velocity_correction()
+{
+// only loop over fluid particles
+#pragma omp parallel for schedule(static)
+    for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
+    {
+        int i = fluid_indices[idx];
+        Particle &pi = particles[i];
+
+        if (!pi.vxsph.has_value())
+            pi.vxsph = {0.0, 0.0};
+
+        double Wi = 0.0;
+
+        double vxsphx = 0.0;
+        double vxsphy = 0.0;
+
+        unsigned int neighbor_count = 0;
+
+        for (int j : neighbors[i])
+        {
+            Particle &pj = particles[j];
+
+            double dx = pi.x[0] - pj.x[0];
+            double dy = pi.x[1] - pj.x[1];
+
+            double r = min_image_dist(dx, dy, Lx, Ly);
+            double Wij = kernel.getW(r, h);
+
+            double rho_j = pj.rho;
+            vxsphx += (pj.v[0] - pi.v[0]) * (pj.m / rho_j) * Wij;
+            vxsphy += (pj.v[1] - pi.v[1]) * (pj.m / rho_j) * Wij;
+
+            Wi += Wij;
+            ++neighbor_count;
+        }
+
+        if (neighbor_count > 0 && Wi > 0.0)
+        {
+            (*pi.vxsph)[0] = pi.v[0] + eta * vxsphx / Wi;
+            (*pi.vxsph)[1] = pi.v[1] + eta * vxsphy / Wi;
+        }
+        else
+        {
+            (*pi.vxsph)[0] = pi.v[0];
+            (*pi.vxsph)[1] = pi.v[1];
+        }
+    }
+}
+
 // compute particle forces (pressure ( + tensile instability correction + artificial viscosity) + viscous terms)
 void Solver::compute_forces()
 {
@@ -376,7 +434,7 @@ void Solver::compute_forces()
     for (int i = 0; i < (int)accel.size(); ++i)
         accel[i] = {0.0, 0.0};
 
-    // only loop pver fluid particles
+    // only loop over fluid particles
 #pragma omp parallel for schedule(static)
     for (int idx = 0; idx < (int)fluid_indices.size(); ++idx)
     {

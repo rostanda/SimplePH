@@ -25,8 +25,11 @@ public:
             pi.v[0] += accel[i][0] * dt * 0.5;
             pi.v[1] += accel[i][1] * dt * 0.5;
 
-            pi.x[0] += pi.v[0] * dt;
-            pi.x[1] += pi.v[1] * dt;
+            // use Xsph-filtered velocity for position update if available
+            const auto &vpos = pi.vxsph.has_value() ? *pi.vxsph : pi.v;
+
+            pi.x[0] += vpos[0] * dt;
+            pi.x[1] += vpos[1] * dt;
 
             if (pi.x[0] >= Lx / 2)
                 pi.x[0] -= Lx;

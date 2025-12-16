@@ -63,6 +63,8 @@ PYBIND11_MODULE(SimplePH, m)
              py::arg("activate"), py::arg("alpha") = 1.0)
         .def("activate_tensile_instability_correction", &Solver::activate_tensile_instability_correction,
              py::arg("activate"), py::arg("epsilon") = 0.2)
+        .def("activate_xsph_filter", &Solver::activate_xsph_filter,
+             py::arg("activate"), py::arg("eta") = 0.1)
         .def("get_particles", &Solver::get_particles,
              py::return_value_policy::reference_internal);
 
@@ -90,4 +92,5 @@ PYBIND11_MODULE(SimplePH, m)
 
     py::class_<VelocityVerletIntegrator, Integrator, std::shared_ptr<VelocityVerletIntegrator>>(m, "VelocityVerletIntegrator")
         .def(py::init<>());
+
 }

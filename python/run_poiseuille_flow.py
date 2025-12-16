@@ -39,7 +39,7 @@ def create_particles():
             p.m = m
             p.rho = rho
 
-            # set type
+            # set type (type = 0: fluid, type = 1: boundary)
             p.type = 0
             if p.x[1] > Ly/2 or p.x[1] < -Ly/2:
                 p.type = 1
@@ -94,9 +94,10 @@ Lref = Ly
 
 print("vref:", vref)
 
-# Reynolds number
+# characteristic velocity and length (mean velocity and half channel height)
 vchar = (2/3) * vmax
 Lchar = Ly / 2
+# Reynolds number
 Re = (rho * vchar * Lchar) / mu
 print("Re:", Re)
 
@@ -149,6 +150,8 @@ solver.set_density_method(SimplePH.DensityMethod.Summation)
 # use artificial viscosity
 # solver.activate_tensile_instability_correction(True)
 
+# # use xsph filter
+# solver.activate_xsph_filter(True, 0.1)
 
 # run simulation
 output_name = "poiseuille_flow"

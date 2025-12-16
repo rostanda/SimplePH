@@ -51,13 +51,19 @@ public:
         compute_timestep_AV(mu_eff);
     }
 
-    void activate_tensile_instability_correction(bool activate, double epsilon_ = 0.2)
+    void activate_tensile_instability_correction(bool activate, double epsilon_)
     {
         use_tensile_instability_correction = activate;
         epsilon = epsilon_;
             printf("tensile instability correction activated");
     }
 
+    void activate_xsph_filter(bool activate, double eta_)
+    {
+        use_xsph_filter = activate;
+        eta = eta_;
+            printf("XSph filter activated (only use with velocity Verlet integrator)");
+    }
 
     enum class DensityMethod
     {
@@ -92,6 +98,8 @@ private:
     double alpha;   // artificial viscosity alpha
     bool use_tensile_instability_correction = false;
     double epsilon; // tensile instability correction epsilon
+    bool use_xsph_filter = true;
+    double eta;   // xsph filter pre-factor
 
     Kernel kernel;
     Grid grid;
@@ -120,4 +128,5 @@ private:
     void compute_pressure();
     void compute_boundaryconditions();
     void compute_forces();
+    void compute_xsph_velocity_correction();
 };
