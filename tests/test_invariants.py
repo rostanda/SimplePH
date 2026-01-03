@@ -47,7 +47,7 @@ def create_solver(kernel, density_method):
     solver.compute_timestep()
     solver.set_eos(SimplePH.EOSType.Tait)
     solver.set_density_method(density_method)
-    solver.set_integrator(SimplePH.VelocityVerletIntegrator())
+    solver.set_integrator(SimplePH.VerletIntegrator())
     return solver
 
 def create_particle_grid(nx=nx, ny=ny, dx=dx):

@@ -8,7 +8,8 @@
 #include "eos.hpp"
 #include "integrator.hpp"
 #include "euler_integrator.hpp"
-#include "velocityverlet_integrator.hpp"
+#include "verlet_integrator.hpp"
+#include "tv_verlet_integrator.hpp"
 #include "vtk_writer.hpp"
 
 class Solver
@@ -28,11 +29,12 @@ public:
     void compute_soundspeed();
     void compute_timestep();
     void compute_timestep_AV(double mu_eff);
-    void set_eos(EOSType eos_type_, double bp_fac_);
-    void set_integrator(std::shared_ptr<Integrator> integrator_) { this->integrator = integrator_; }
-    void activate_artificial_viscosity(bool activate, double alpha_ = 1.0)
+    void set_eos(EOSType eos_type_, double bp_fac_, double tvp_bp_fac_ = 0.0);
+    void set_integrator(std::shared_ptr<Integrator> integrator_) { this->integrator = integrator_;}
+
+    void activate_artificial_viscosity(double alpha_ = 1.0)
     {
-        use_artificial_viscosity = activate;
+        use_artificial_viscosity = true;
         alpha = alpha_;
 
         printf("artificial viscosity activated");
@@ -51,25 +53,32 @@ public:
         compute_timestep_AV(mu_eff);
     }
 
-    void activate_tensile_instability_correction(bool activate, double epsilon_)
+    void activate_tensile_instability_correction(double epsilon_)
     {
-        use_tensile_instability_correction = activate;
+        use_tensile_instability_correction = true;
         epsilon = epsilon_;
             printf("tensile instability correction activated");
     }
 
-    void activate_xsph_filter(bool activate, double eta_)
+    void activate_xsph_filter(double eta_)
     {
-        use_xsph_filter = activate;
+        use_xsph_filter = true;
         eta = eta_;
             printf("XSph filter activated (only use with velocity Verlet integrator)");
     }
 
-    void activate_negative_pressure_truncation(bool activate)
+    void activate_negative_pressure_truncation()
     {
-        use_negative_pressure_truncation = activate;
+        use_negative_pressure_truncation = true;
             printf("negative pressure truncation activated");
     }
+
+    void activate_transport_velocity()
+    {
+        use_transport_velocity = true;
+            printf("transport velocity activated");
+    }
+
 
     enum class DensityMethod
     {
@@ -102,15 +111,20 @@ private:
 
     bool use_artificial_viscosity = false;
     double alpha;   // artificial viscosity alpha
+
     bool use_tensile_instability_correction = false;
     double epsilon; // tensile instability correction epsilon
-    bool use_xsph_filter = true;
+
+    bool use_xsph_filter = false;
     double eta;   // xsph filter pre-factor
+
     bool use_negative_pressure_truncation = false;
+
+    bool use_transport_velocity = false; // transport velocity approach
 
     Kernel kernel;
     Grid grid;
-    EOS eos{EOSType::Tait, rho0, c, 0.0};
+    EOS eos{EOSType::Tait, rho0, c, 0.0, 0.0};
 
     std::shared_ptr<Integrator> integrator;
 

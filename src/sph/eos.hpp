@@ -23,12 +23,11 @@ inline EOSType eos_from_string(const std::string &s)
 class EOS
 {
 public:
-    EOS(EOSType type, double rho0, double c, double bp_fac = 0.0)
-        : type(type), rho0(rho0), c(c), bp_fac(bp_fac)
+    EOS(EOSType type, double rho0, double c, double bp_fac = 0., double tvp_bp_fac = 0.)
+        : type(type), rho0(rho0), c(c), bp_fac(bp_fac), tvp_bp_fac(tvp_bp_fac)
     {
         bp = (bp_fac != 0.0) ? bp_fac * rho0 * c * c : 0.0;
-        // if (bp_fac != 0.0)
-        //     bp = bp_fac * rho0 * c * c;
+        tvp_bp = (tvp_bp_fac != 0.0) ? tvp_bp_fac * rho0 * c * c : 0.0;
     }
 
     double pressure_from_density(double rho) const
@@ -59,10 +58,15 @@ public:
 
     double get_bp() const { return bp; }
 
+    double get_tvp_bp() const { return tvp_bp; }
+
 private:
     EOSType type;
     double rho0;
     double c;
     double bp_fac;
     double bp;
+
+    double tvp_bp_fac;
+    double tvp_bp;
 };

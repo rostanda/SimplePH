@@ -38,13 +38,9 @@ void Solver::set_particles(const std::vector<Particle> &parts)
     for (auto &p : particles)
     {
         if (p.type == 1)
-        {
             p.vf = {0.0, 0.0};
-        }
         else
-        {
             p.vf = std::nullopt;
-        }
     }
 
     for (auto &p : particles)
@@ -55,9 +51,20 @@ void Solver::set_particles(const std::vector<Particle> &parts)
             p.drho_dt = 0.0;
 
         if (use_xsph_filter)
-            p.vxsph = {0.0, 0.0};
+            p.v_xsph = {0.0, 0.0};
         else
-            p.vxsph = std::nullopt;
+            p.v_xsph = std::nullopt;
+
+        if (use_transport_velocity)
+        {
+            p.tv = {0.0, 0.0};
+            p.bpc = {0.0, 0.0};
+        }
+        else
+        {
+            p.tv = std::nullopt;
+            p.bpc = std::nullopt;
+        }
     }
 }
 
@@ -134,7 +141,7 @@ void Solver::compute_timestep_AV(double mu_eff)
 }
 
 // set EOS
-void Solver::set_eos(EOSType eos_type_, double bp_fac_) { eos = EOS(eos_type_, rho0, c, bp_fac_); }
+void Solver::set_eos(EOSType eos_type_, double bp_fac_, double tvp_bp_fac_) { eos = EOS(eos_type_, rho0, c, bp_fac_, tvp_bp_fac_); }
 
 // get particles
 const std::vector<Particle> &Solver::get_particles() const { return particles; }
@@ -197,7 +204,8 @@ void Solver::run(int steps, int vtk_freq, int log_freq)
             step_times.pop_front();
 
         double avg_step_time = 0.0;
-        for (double t : step_times) avg_step_time += t;
+        for (double t : step_times)
+            avg_step_time += t;
         avg_step_time /= step_times.size();
 
         int remaining_steps = steps - (i + 1);
@@ -303,8 +311,8 @@ void Solver::compute_density_continuity()
         Particle &pi = particles[i];
 
         double drho_dt_i = 0.0;
-        const double vi_x = pi.v[0];
-        const double vi_y = pi.v[1];
+        const double vx_i = pi.v[0];
+        const double vy_i = pi.v[1];
         const double rho_i = pi.rho;
 
         for (int j : neighbors[i])
@@ -316,12 +324,11 @@ void Solver::compute_density_continuity()
             double r = min_image_dist(dx, dy, Lx, Ly);
             double dW = kernel.getdW(r, h) / r;
 
-            const double vj_x = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[0] : pj.v[0];
-            const double vj_y = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[1] : pj.v[1];
+            const double vx_j = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[0] : pj.v[0];
+            const double vy_j = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[1] : pj.v[1];
 
-            const double dvx = vi_x - vj_x;
-            const double dvy = vi_y - vj_y;
-
+            const double dvx = vx_i - vx_j;
+            const double dvy = vy_i - vy_j;
             drho_dt_i += (pj.m / pj.rho) * (dvx * dW * dx + dvy * dW * dy);
         }
         drho_dt_i *= rho_i;
@@ -343,7 +350,7 @@ void Solver::compute_pressure()
         // pi.p = eos.pressure_from_density(pi.rho);
         double p = eos.pressure_from_density(pi.rho);
         if (use_negative_pressure_truncation)
-            p = std::max(p, 0.0);   
+            p = std::max(p, 0.0);
         pi.p = p;
     }
 }
@@ -358,8 +365,12 @@ void Solver::compute_boundaryconditions()
         int i = boundary_indices[idx];
         Particle &pi = particles[i];
 
-        if (!pi.vf.has_value())
-            pi.vf = {0.0, 0.0};
+        if (pi.vf.has_value())
+        {
+            (*pi.vf)[0] = 0.0;
+            (*pi.vf)[1] = 0.0;
+        }
+
         pi.p = 0.0;
 
         double vfx = 0.0, vfy = 0.0, pf = 0.0, Wi = 0.0, phx = 0.0, phy = 0.0;
@@ -419,13 +430,16 @@ void Solver::compute_xsph_velocity_correction()
         int i = fluid_indices[idx];
         Particle &pi = particles[i];
 
-        if (!pi.vxsph.has_value())
-            pi.vxsph = {0.0, 0.0};
+        if (pi.v_xsph.has_value())
+        {
+            (*pi.v_xsph)[0] = 0.0;
+            (*pi.v_xsph)[1] = 0.0;
+        }
 
         double Wi = 0.0;
 
-        double vxsphx = 0.0;
-        double vxsphy = 0.0;
+        double vx_xsph = 0.0;
+        double vy_xsph = 0.0;
 
         unsigned int neighbor_count = 0;
 
@@ -440,8 +454,8 @@ void Solver::compute_xsph_velocity_correction()
             double Wij = kernel.getW(r, h);
 
             double rho_j = pj.rho;
-            vxsphx += (pj.v[0] - pi.v[0]) * (pj.m / rho_j) * Wij;
-            vxsphy += (pj.v[1] - pi.v[1]) * (pj.m / rho_j) * Wij;
+            vx_xsph += (pj.v[0] - pi.v[0]) * (pj.m / rho_j) * Wij;
+            vy_xsph += (pj.v[1] - pi.v[1]) * (pj.m / rho_j) * Wij;
 
             Wi += Wij;
             ++neighbor_count;
@@ -449,18 +463,18 @@ void Solver::compute_xsph_velocity_correction()
 
         if (neighbor_count > 0 && Wi > 0.0)
         {
-            (*pi.vxsph)[0] = pi.v[0] + eta * vxsphx / Wi;
-            (*pi.vxsph)[1] = pi.v[1] + eta * vxsphy / Wi;
+            (*pi.v_xsph)[0] = pi.v[0] + eta * vx_xsph / Wi;
+            (*pi.v_xsph)[1] = pi.v[1] + eta * vy_xsph / Wi;
         }
         else
         {
-            (*pi.vxsph)[0] = pi.v[0];
-            (*pi.vxsph)[1] = pi.v[1];
+            (*pi.v_xsph)[0] = pi.v[0];
+            (*pi.v_xsph)[1] = pi.v[1];
         }
     }
 }
 
-// compute particle forces (pressure ( + tensile instability correction + artificial viscosity) + viscous terms)
+// compute particle forces (pressure ( + tensile instability correction ) ( + artificial viscosity ) ( + transport velocity) + viscous terms)
 void Solver::compute_forces()
 {
 #pragma omp parallel for schedule(static)
@@ -475,39 +489,51 @@ void Solver::compute_forces()
         Particle &pi = particles[i];
 
         double fx = 0.0, fy = 0.0;
-        const double vi_x = pi.v[0];
-        const double vi_y = pi.v[1];
+        const double vx_i = pi.v[0];
+        const double vy_i = pi.v[1];
         const double p_i = pi.p;
         const double rho_i = pi.rho;
-        const double Vi = pi.m / rho_i;
+        const double V_i = pi.m / rho_i;
+
+        if (use_transport_velocity && pi.bpc.has_value())
+        {
+            (*pi.bpc)[0] = 0.0;
+            (*pi.bpc)[1] = 0.0;
+        }
+
+        // only necessary for transport velocity calculation
+        const double Ai11 = use_transport_velocity ? rho_i * vx_i * ((*pi.tv)[0] - vx_i) : 0.0;
+        const double Ai12 = use_transport_velocity ? rho_i * vx_i * ((*pi.tv)[1] - vy_i) : 0.0;
+        const double Ai21 = use_transport_velocity ? rho_i * vy_i * ((*pi.tv)[0] - vx_i) : 0.0;
+        const double Ai22 = use_transport_velocity ? rho_i * vy_i * ((*pi.tv)[1] - vy_i) : 0.0;
 
         for (int j : neighbors[i])
         {
             Particle &pj = particles[j];
 
-            const double vj_x = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[0] : pj.v[0];
-            const double vj_y = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[1] : pj.v[1];
+            const double vx_j = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[0] : pj.v[0];
+            const double vy_j = (pj.type == 1 && pj.vf.has_value()) ? (*pj.vf)[1] : pj.v[1];
             const double p_j = pj.p;
 
             const double rho_j = pj.rho;
-            const double Vj = pj.m / rho_j;
+            const double V_j = pj.m / rho_j;
 
             double dx = pi.x[0] - pj.x[0];
             double dy = pi.x[1] - pj.x[1];
             double r = min_image_dist(dx, dy, Lx, Ly);
             double dW = kernel.getdW(r, h) / r;
 
-            const double Vij_sqr = Vi * Vi + Vj * Vj;
+            const double V_ij_sqr = V_i * V_i + V_j * V_j;
 
             // pressure force
-            const double p_fac = Vij_sqr * (rho_j * p_i + rho_i * p_j) / (rho_i + rho_j);
+            const double p_fac = V_ij_sqr * (rho_j * p_i + rho_i * p_j) / (rho_i + rho_j);
             fx -= p_fac * dW * dx;
             fy -= p_fac * dW * dy;
 
-            const double dvx = vi_x - vj_x;
-            const double dvy = vi_y - vj_y;
+            const double dvx = vx_i - vx_j;
+            const double dvy = vy_i - vy_j;
 
-            // if (use_tensile_instability_correction)
+            // using tensile instability correction if enabled
             if (use_tensile_instability_correction && pj.type == 0)
             {
                 // tensile instability correction (Monaghan 2000)
@@ -519,19 +545,20 @@ void Solver::compute_forces()
                 double tilde_pi = (p_i >= 0.0) ? 0.01 * p_i : epsilon * std::abs(p_i);
                 double tilde_pj = (p_j >= 0.0) ? 0.01 * p_j : epsilon * std::abs(p_j);
 
-                double tensile_p_fac = Vij_sqr * (rho_j * tilde_pi + rho_i * tilde_pj) / (rho_i + rho_j);
+                double tensile_p_fac = V_ij_sqr * (rho_j * tilde_pi + rho_i * tilde_pj) / (rho_i + rho_j);
                 tensile_p_fac *= fij_fourp;
 
                 fx -= tensile_p_fac * dW * dx;
                 fy -= tensile_p_fac * dW * dy;
             }
 
-            // avoid division by zero when r is extremely small
-            const double r_sqr = r * r + 0.01 * h * h;
 
-            // if (use_artificial_viscosity)
+            // using articial viscosity if enabled
             if (use_artificial_viscosity and pj.type == 0)
             {
+                // avoid division by zero when r is extremely small
+                const double r_sqr = r * r + 0.01 * h * h;
+
                 // artificial viscosity (Monaghan 1992)
                 double vr = dvx * dx + dvy * dy;
                 if (vr < 0.0)
@@ -542,8 +569,25 @@ void Solver::compute_forces()
                 }
             }
 
+            // using transport velocity correction if enabled
+            if (use_transport_velocity)
+            {   
+                const double Aj11 = (pj.type == 0) ? rho_j * vx_j * ((*pj.tv)[0] - vx_j) : 0.0;
+                const double Aj12 = (pj.type == 0) ? rho_j * vx_j * ((*pj.tv)[1] - vy_j) : 0.0;
+                const double Aj21 = (pj.type == 0) ? rho_j * vy_j * ((*pj.tv)[0] - vx_j) : 0.0;
+                const double Aj22 = (pj.type == 0) ? rho_j * vy_j * ((*pj.tv)[1] - vy_j) : 0.0;
+
+                const double tv_fac = 0.5 * V_ij_sqr;
+                fx += tv_fac * ( (Ai11 + Aj11) * dW * dx + (Ai12 + Aj12) * dW * dy );
+                fy += tv_fac * ( (Ai21 + Aj21) * dW * dx + (Ai22 + Aj22) * dW * dy );
+                
+                const double tv_bpc_fac = V_ij_sqr / pi.m; 
+                (*pi.bpc)[0] -= tv_bpc_fac * eos.get_tvp_bp() * dW * dx;
+                (*pi.bpc)[1] -= tv_bpc_fac * eos.get_tvp_bp() * dW * dy;
+            }
+
             // viscous force
-            const double visc_fac = Vij_sqr * mu;
+            const double visc_fac = V_ij_sqr * mu;
             fx += visc_fac * dW * dvx;
             fy += visc_fac * dW * dvy;
         }

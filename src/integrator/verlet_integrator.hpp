@@ -4,7 +4,7 @@
 
 #include <omp.h>
 
-class VelocityVerletIntegrator : public Integrator
+class VerletIntegrator : public Integrator
 {
 public:
     void step1(
@@ -27,7 +27,7 @@ public:
             pi.v[1] += accel[i][1] * dt * 0.5;
 
             // use Xsph-filtered velocity for position update if available
-            const auto &vpos = pi.vxsph.has_value() ? *pi.vxsph : pi.v;
+            const auto &vpos = pi.v_xsph.has_value() ? *pi.v_xsph : pi.v;
 
             pi.x[0] += vpos[0] * dt;
             pi.x[1] += vpos[1] * dt;

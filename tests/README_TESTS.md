@@ -108,7 +108,7 @@ In `test_physical_flows.py`, plots are automatically generated after running the
 
 #### Physics Configuration (`TestPhysicsConfiguration`)
 - EOS selection (Tait, Linear)
-- Integrator selection (Euler, Velocity Verlet)
+- Integrator selection (Euler, Verlet)
 - Density method selection (Summation, Continuity)
 
 #### Particle Handling (`TestParticles`)

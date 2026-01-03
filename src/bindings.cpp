@@ -55,18 +55,18 @@ PYBIND11_MODULE(SimplePH, m)
              py::arg("vtk_freq") = 1,
              py::arg("log_freq") = 0)
         .def("set_eos", &Solver::set_eos,
-             py::arg("eos_type"), py::arg("bp_fac") = 0.0)
+             py::arg("eos_type"), py::arg("bp_fac") = 0.0, py::arg("tvp_bp_fac") = 0.0)
         .def("set_density_method", &Solver::set_density_method)
         .def("set_particles", &Solver::set_particles)
         .def("set_integrator", &Solver::set_integrator)
         .def("activate_artificial_viscosity", &Solver::activate_artificial_viscosity,
-             py::arg("activate"), py::arg("alpha") = 1.0)
+             py::arg("alpha") = 1.0)
         .def("activate_tensile_instability_correction", &Solver::activate_tensile_instability_correction,
-             py::arg("activate"), py::arg("epsilon") = 0.2)
+             py::arg("epsilon") = 0.2)
         .def("activate_xsph_filter", &Solver::activate_xsph_filter,
-             py::arg("activate"), py::arg("eta") = 0.1)
-        .def("activate_negative_pressure_truncation", &Solver::activate_negative_pressure_truncation,
-             py::arg("activate"))
+             py::arg("eta") = 0.1)
+        .def("activate_negative_pressure_truncation", &Solver::activate_negative_pressure_truncation)
+        .def("activate_transport_velocity", &Solver::activate_transport_velocity)
         .def("get_particles", &Solver::get_particles,
              py::return_value_policy::reference_internal);
 
@@ -92,7 +92,10 @@ PYBIND11_MODULE(SimplePH, m)
     py::class_<EulerIntegrator, Integrator, std::shared_ptr<EulerIntegrator>>(m, "EulerIntegrator")
         .def(py::init<>());
 
-    py::class_<VelocityVerletIntegrator, Integrator, std::shared_ptr<VelocityVerletIntegrator>>(m, "VelocityVerletIntegrator")
+    py::class_<VerletIntegrator, Integrator, std::shared_ptr<VerletIntegrator>>(m, "VerletIntegrator")
+        .def(py::init<>());
+
+    py::class_<TransportVelocityVerletIntegrator, Integrator, std::shared_ptr<TransportVelocityVerletIntegrator>>(m, "TransportVelocityVerletIntegrator")
         .def(py::init<>());
 
 }

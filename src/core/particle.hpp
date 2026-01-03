@@ -12,7 +12,10 @@ struct Particle
 
     std::optional<double> drho_dt; // optional for continuity density approach
 
-    std::optional<std::array<double, 2>> vxsph; // optional for xsph filter velocity
+    std::optional<std::array<double, 2>> v_xsph; // optional for xsph filter velocity
+
+    std::optional<std::array<double, 2>> tv; // optional transport velocity
+    std::optional<std::array<double, 2>> bpc; // optional back pressure correction
 
     std::optional<std::array<double, 2>> vf; // fictitious velocity for BC
 };

@@ -120,12 +120,12 @@ class TestPhysicsConfiguration:
         solver.set_integrator(SimplePH.EulerIntegrator())
 
     def test_set_velocity_verlet_integrator(self):
-        """Verify Velocity Verlet integrator can be set."""
+        """Verify Verlet integrator can be set."""
         solver = SimplePH.Solver(
             h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
             Lref=0.1, vref=1.0, kernel_type=SimplePH.KernelType.CubicSpline
         )
-        solver.set_integrator(SimplePH.VelocityVerletIntegrator())
+        solver.set_integrator(SimplePH.VerletIntegrator())
 
     def test_set_summation_density_method(self):
         """Verify summation density method can be set."""
@@ -236,7 +236,7 @@ class TestAdvancedSolverFeatures:
         solver.set_viscosity(1.0)
         solver.compute_soundspeed()
         solver.compute_timestep()
-        solver.activate_artificial_viscosity(True, alpha=1.5)  # Test AV activation
+        solver.activate_artificial_viscosity(alpha=1.5)  # Test AV activation
 
     def test_activate_tensile_instability_correction(self):
         solver = SimplePH.Solver(
@@ -244,7 +244,7 @@ class TestAdvancedSolverFeatures:
             Lref=0.1, vref=0.01,
             kernel_type=SimplePH.KernelType.CubicSpline
         )
-        solver.activate_tensile_instability_correction(True, epsilon=0.3)
+        solver.activate_tensile_instability_correction(epsilon=0.3)
 
     def test_set_omp_threads(self):
         SimplePH.set_omp_threads(2)  # Test setting OpenMP threads
@@ -265,7 +265,7 @@ class TestSimulationExecution:
         solver.set_acceleration([0.0024, 0.0])
         solver.set_eos(SimplePH.EOSType.Tait)
         solver.set_density_method(SimplePH.DensityMethod.Continuity)
-        solver.set_integrator(SimplePH.VelocityVerletIntegrator())
+        solver.set_integrator(SimplePH.VerletIntegrator())
         
         solver.compute_soundspeed()
         solver.compute_timestep()

@@ -43,7 +43,7 @@ kappa = 2.0
 
 eos = SimplePH.EOSType.Tait
 density_method = SimplePH.DensityMethod.Continuity
-integrator = SimplePH.VelocityVerletIntegrator()
+integrator = SimplePH.VerletIntegrator()
 
 poiseuille_resolutions = [10, 20, 40]
 poiseuille_steps_list = [3000, 5000, 8000]
