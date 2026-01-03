@@ -6,7 +6,7 @@ import pathlib
 import sys
 import argparse
 
-parser = argparse.ArgumentParser(description="SimplePH poiseuille flow")
+parser = argparse.ArgumentParser(description="SimplePH couette flow")
 
 parser.add_argument(
     "-np", "--num-threads",
@@ -55,7 +55,7 @@ def create_particles():
                 p.type = 1
             # set wall velocity of upper wall
             if p.x[1] > Ly/2:
-                p.v = [0.002, 0.0]
+                p.v = [vwall, 0.0]
 
             parts.append(p)
     return parts
@@ -101,15 +101,21 @@ print("V:", V)
 # body force
 b = [0.0, 0.0]
 
+# upper wall velocity
+vwall = 0.002
+
 # reference values
-vmax = 0.002
+vmax = vwall
 vref = vmax
 Lref = Ly
 
 print("vref:", vref)
 
+# characteristic velocity and length (mean velocity and channel height)
+vchar = vmax / 2.0
+Lchar = Ly
 # Reynolds number
-Re = (rho * vref * Lref) / mu
+Re = (rho * vchar * Lchar) / mu
 print("Re:", Re)
 
 # density fluctuation

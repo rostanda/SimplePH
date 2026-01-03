@@ -49,3 +49,6 @@ particles_*.vtu
 # OS files
 .DS_Store
 Thumbs.db
+
+# GitHub Copilot instructions
+.github/copilot_instructions.md
