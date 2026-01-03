@@ -2,6 +2,8 @@
 #include <vector>
 #include <memory>
 #include <chrono>
+#include <string>
+#include <filesystem>
 #include "particle.hpp"
 #include "grid.hpp"
 #include "kernel.hpp"
@@ -31,6 +33,13 @@ public:
     void compute_timestep_AV(double mu_eff);
     void set_eos(EOSType eos_type_, double bp_fac_, double tvp_bp_fac_ = 0.0);
     void set_integrator(std::shared_ptr<Integrator> integrator_) { this->integrator = integrator_;}
+
+    void set_output_name(const std::string &output_name_) 
+    {
+         output_name = output_name_;
+         std::filesystem::create_directories(output_name_);
+    }
+
 
     void activate_artificial_viscosity(double alpha_ = 1.0)
     {
@@ -104,6 +113,8 @@ private:
     double vref;
     double c;
     double dt;
+
+    std::string output_name = "unlabeled_output_internal";
 
     // effective (possibly damped) body force for the current timestep
     std::array<double, 2> compute_effective_body_force(int timestep) const;

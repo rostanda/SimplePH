@@ -90,7 +90,7 @@ def main():
 
     # Load VTU files
     vtu_dir = pathlib.Path(args.vtu_dir)
-    filenames = sorted(vtu_dir.glob('particles_00*.vtu'))
+    filenames = sorted(vtu_dir.glob('poiseuille_flow_00*.vtu'))
     
     if len(filenames) == 0:
         print(f"No VTU files found in {vtu_dir}")
@@ -108,7 +108,7 @@ def main():
     # Select files based on t_steps
     sel_filenames = []
     for t in t_steps:
-        filename = vtu_dir / f"particles_{t:05d}.vtu"
+        filename = vtu_dir / f"poiseuille_flow_{t:05d}.vtu"
         if filename.exists():
             sel_filenames.append(filename)
         else:

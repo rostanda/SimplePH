@@ -190,7 +190,7 @@ void Solver::run(int steps, int vtk_freq, int log_freq)
         auto step_start = std::chrono::high_resolution_clock::now();
 
         if (vtk_counter == 0)
-            VTKWriter::write(particles, i);
+            VTKWriter::write(particles, i, output_name);
         vtk_counter = (vtk_counter + 1) % vtk_freq;
         if (log_freq > 0)
             log_counter = (log_counter + 1) % log_freq;

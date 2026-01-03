@@ -1,21 +1,20 @@
 #include "vtk_writer.hpp"
 
-void VTKWriter::write(const std::vector<Particle> &particles, int step)
+void VTKWriter::write(const std::vector<Particle> &particles, int step, const std::string &output_name)
 {
-    // Standard filename
     std::ostringstream filename;
-    filename << "particles_" << std::setw(5) << std::setfill('0') << step << ".vtu";
-    write(particles, step, filename.str());
-}
+    filename << output_name << "/" 
+             << output_name << "_"
+             << std::setw(5) << std::setfill('0') << step
+             << ".vtu";
 
-void VTKWriter::write(const std::vector<Particle> &particles, int /*step*/, const std::string &filename)
-{
-    std::ofstream f(filename);
+    std::ofstream f(filename.str());
     if (!f.is_open())
     {
-        std::cerr << "ERROR: cannot write " << filename << std::endl;
+        std::cerr << "ERROR: cannot write " << filename.str() << std::endl;
         return;
     }
+
 
     f << "<?xml version=\"1.0\"?>\n";
     f << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";

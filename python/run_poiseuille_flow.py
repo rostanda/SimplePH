@@ -4,17 +4,20 @@ import math
 import os
 import pathlib
 import sys
+import argparse
 
-# threads for computing (default: 1)
-num_threads = 1
+parser = argparse.ArgumentParser(description="SimplePH lid driven cavity")
 
-# override via -np <N> as command line argument
-if "-np" in sys.argv:
-    idx = sys.argv.index("-np")
-    try:
-        num_threads = int(sys.argv[idx + 1])
-    except (IndexError, ValueError):
-        raise ValueError("Usage: script.py [-np N]")
+parser.add_argument(
+    "-np", "--num-threads",
+    type=int,
+    default=1,
+    help="Number of OpenMP threads"
+)
+
+args = parser.parse_args()
+
+num_threads = args.num_threads
 
 print(f"Setting {num_threads} OpenMP threads")
 SimplePH.set_omp_threads(num_threads)
@@ -134,13 +137,13 @@ solver.compute_timestep()
 solver.set_eos(SimplePH.EOSType.Tait)
 
 # use artificial viscosity
-# solver.activate_artificial_viscosity(True,0.01)
+# solver.activate_artificial_viscosity(0.01)
 
-# use artificial viscosity
-# solver.activate_tensile_instability_correction(True)
+# use tensile instability correction
+# solver.activate_tensile_instability_correction()
 
 # # use xsph filter
-# solver.activate_xsph_filter(True, 0.1)
+# solver.activate_xsph_filter(0.1)
 
 # set particles
 solver.set_particles(create_particles())
@@ -153,17 +156,22 @@ solver.set_integrator(SimplePH.VerletIntegrator())
 # solver.set_density_method(SimplePH.DensityMethod.Continuity)
 solver.set_density_method(SimplePH.DensityMethod.Summation)
 
-# run simulation
+# set output name
 output_name = "poiseuille_flow"
+solver.set_output_name(output_name)
 
-# create output directory and write VTU files into it
-outdir = pathlib.Path(output_name)
-outdir.mkdir(parents=True, exist_ok=True)
+# run simulation
+solver.run(5001, vtk_freq=100, log_freq=50)
 
-cwd = os.getcwd()
-try:
-    os.chdir(outdir)
-    print(f"Writing VTU output into: {outdir.resolve()}")
-    solver.run(5001, vtk_freq=100, log_freq=50)
-finally:
-    os.chdir(cwd)
+
+# # create output directory and write VTU files into it
+# outdir = pathlib.Path(output_name)
+# outdir.mkdir(parents=True, exist_ok=True)
+
+# cwd = os.getcwd()
+# try:
+#     os.chdir(outdir)
+#     print(f"Writing VTU output into: {outdir.resolve()}")
+#     solver.run(5001, vtk_freq=100, log_freq=50)
+# finally:
+#     os.chdir(cwd)

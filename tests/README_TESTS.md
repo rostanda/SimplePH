@@ -108,7 +108,7 @@ In `test_physical_flows.py`, plots are automatically generated after running the
 
 #### Physics Configuration (`TestPhysicsConfiguration`)
 - EOS selection (Tait, Linear)
-- Integrator selection (Euler, Verlet)
+- Integrator selection (Euler, Verlet, TransportVelocityVerlet)
 - Density method selection (Summation, Continuity)
 
 #### Particle Handling (`TestParticles`)
@@ -122,6 +122,8 @@ In `test_physical_flows.py`, plots are automatically generated after running the
 #### Advanced Solver Features (`TestAdvancedSolverFeatures`)
 - Artificial viscosity
 - Tensile instability correction
+- XSPH filter
+- Transport velocity formulation (TVF)
 
 #### Simulation Execution (`TestSimulationExecution`)
 - Run a minimal simulation with 3 particles

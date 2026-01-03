@@ -19,9 +19,6 @@ public:
     VTKWriter() = default;
     ~VTKWriter() = default;
 
-    // static function
-    static void write(const std::vector<Particle> &particles, int step);
-
-    // write to custom filename
-    static void write(const std::vector<Particle> &particles, int step, const std::string &filename);
+    // write to output name and output folder
+    static void write(const std::vector<Particle> &particles, int step, const std::string &output_name);
 };

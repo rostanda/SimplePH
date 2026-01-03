@@ -46,19 +46,21 @@ The example script `run_poiseuille_flow.py` allows you to manually set the numbe
 ```bash
 python3 run_poiseuille_flow.py -np 8
 ```
-Inside the script, OpenMP threads are configured via:
+Inside the script, OpenMP threads are configured via argument parser:
 
 ```bash
-import SimplePH
+parser = argparse.ArgumentParser(description="SimplePH simulation")
 
-num_threads = 1  # default
+parser.add_argument(
+    "-np", "--num-threads",
+    type=int,
+    default=1,
+    help="Number of OpenMP threads"
+)
 
-if "-np" in sys.argv:
-    idx = sys.argv.index("-np")
-    num_threads = int(sys.argv[idx + 1])
+args = parser.parse_args()
 
-print(f"Setting {num_threads} OpenMP threads")
-SimplePH.set_omp_threads(num_threads)
+num_threads = args.num_threads
 ```
 
 If no `-np` argument is given, the solver uses 1 thread.
@@ -76,10 +78,10 @@ SimplePH solves the incompressible Navier–Stokes equations in 2D using weakly 
 
 ### Key Features
 
-- **Simulation**: 2D fluid particles with pressure & viscous forces, periodic boundaries
+- **Simulation**: 2D fluid particles with pressure & viscous forces, periodic and Dirichlet boundaries
 - **Physics**: Configurable EOS (Tait, Linear) and density methods (Summation, Continuity)
 - **Kernels**: Cubic Spline, Quintic Spline, Wendland C2 and Wendland C4 smoothing kernels
-- **Integration**: Velocity Verlet and Euler time stepping schemes
+- **Integration**: Verlet and Euler time stepping schemes
 - **Spatial Index**: Cell-linked neighbor search for efficiency
 - **Visualization**: VTK output for ParaView, Python plotting utilities
 - **Python API**: Full bindings via pybind11
@@ -128,7 +130,7 @@ solver.run(steps=100, vtk_freq=10, log_freq=10)
 | Particle | `src/core/particle.hpp` | Particle data structure |
 | Kernel | `src/sph/kernel.hpp` | Smoothing kernels and derivation (W, dW) |
 | Grid | `src/neighbor/grid.hpp` | Cell-linked neighbor search |
-| Integrators | `src/integrator/` | Time stepping (Euler, Velocity Verlet) |
+| Integrators | `src/integrator/` | Time stepping (Euler, Verlet) |
 | EOS | `src/sph/eos.hpp` | Pressure closure models |
 | Bindings | `src/bindings.cpp` | Python interface (pybind11) |
 
@@ -162,6 +164,7 @@ The SPH discretization follows standard formulations from:
 - Monaghan, J. J. (2005). Smoothed particle hydrodynamics. Reports on progress in physics, 68(8), 1703.
 - Hu, X. Y., & Adams, N. A. (2007). An incompressible multi-phase SPH method. Journal of computational physics, 227(1), 264-278.
 - Adami, S., Hu, X. Y., & Adams, N. A. (2012). A generalized wall boundary condition for smoothed particle hydrodynamics. Journal of Computational Physics, 231(21), 7057-7075.
+- Adami, S., Hu, X. Y., & Adams, N. A. (2013). A transport-velocity formulation for smoothed particle hydrodynamics. Journal of Computational Physics, 241, 292-307.
 
 ## License
 

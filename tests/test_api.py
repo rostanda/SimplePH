@@ -119,13 +119,21 @@ class TestPhysicsConfiguration:
         )
         solver.set_integrator(SimplePH.EulerIntegrator())
 
-    def test_set_velocity_verlet_integrator(self):
+    def test_set_verlet_integrator(self):
         """Verify Verlet integrator can be set."""
         solver = SimplePH.Solver(
             h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
             Lref=0.1, vref=1.0, kernel_type=SimplePH.KernelType.CubicSpline
         )
         solver.set_integrator(SimplePH.VerletIntegrator())
+
+    def test_set_transport_velocity_verlet_integrator(self):
+        """Verify Transport Velocity Verlet integrator can be set."""
+        solver = SimplePH.Solver(
+            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
+            Lref=0.1, vref=1.0, kernel_type=SimplePH.KernelType.CubicSpline
+        )
+        solver.set_integrator(SimplePH.TransportVelocityVerletIntegrator())
 
     def test_set_summation_density_method(self):
         """Verify summation density method can be set."""
@@ -224,7 +232,7 @@ class TestStabilityParameters:
         # No exception = test passes
 
 class TestAdvancedSolverFeatures:
-    """Test advanced solver features like AV, tensile correction, OpenMP threads."""
+    """Test advanced solver features like AV, tensile correction, XSPH filter, TVF and OpenMP threads."""
 
     def test_activate_artificial_viscosity(self):
         solver = SimplePH.Solver(
@@ -245,6 +253,22 @@ class TestAdvancedSolverFeatures:
             kernel_type=SimplePH.KernelType.CubicSpline
         )
         solver.activate_tensile_instability_correction(epsilon=0.3)
+
+    def test_activate_xsph_filter(self):
+        solver = SimplePH.Solver(
+            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
+            Lref=0.1, vref=0.01,
+            kernel_type=SimplePH.KernelType.CubicSpline
+        )
+        solver.activate_xsph_filter(eta=0.1)
+
+    def test_activate_transport_velocity_formulation(self):
+        solver = SimplePH.Solver(
+            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
+            Lref=0.1, vref=0.01,
+            kernel_type=SimplePH.KernelType.CubicSpline
+        )
+        solver.activate_transport_velocity()
 
     def test_set_omp_threads(self):
         SimplePH.set_omp_threads(2)  # Test setting OpenMP threads

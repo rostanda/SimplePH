@@ -144,14 +144,9 @@ class TestPhysicalFlows:
                 particles.append(p)
         solver.set_particles(particles)
 
-        solver.run(steps=steps, vtk_freq=100, log_freq=100)
+        solver.set_output_name(f"poiseuille_{res}")
 
-        # Move VTU output
-        res_outdir = pathlib.Path(f"poiseuille_{res}")
-        res_outdir.mkdir(exist_ok=True)
-        for f in os.listdir("."):
-            if f.endswith(".vtu"):
-                shutil.move(f, res_outdir / f)
+        solver.run(steps=steps, vtk_freq=100, log_freq=100)
 
         L2_error = compute_relative_L2_error(solver.get_particles(), poiseuille_analytical)
         print(f"[Poiseuille] res={res}, L2 error={L2_error:.4e}")
@@ -205,14 +200,9 @@ class TestPhysicalFlows:
                 particles.append(p)
         solver.set_particles(particles)
 
-        solver.run(steps=steps, vtk_freq=100, log_freq=0)
+        solver.set_output_name(f"couette_{res}")
 
-        # Move VTU output
-        res_outdir = pathlib.Path(f"poiseuille_{res}")
-        res_outdir.mkdir(exist_ok=True)
-        for f in os.listdir("."):
-            if f.endswith(".vtu"):
-                shutil.move(f, res_outdir / f)
+        solver.run(steps=steps, vtk_freq=100, log_freq=0)
 
         L2_error = compute_relative_L2_error(solver.get_particles(), couette_analytical)
         print(f"[Couette] res={res}, L2 error={L2_error:.4e}")
