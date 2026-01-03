@@ -3,10 +3,9 @@ import numpy as np
 import math
 import os
 import pathlib
-import sys
 import argparse
 
-parser = argparse.ArgumentParser(description="SimplePH poiseuille flow")
+parser = argparse.ArgumentParser(description="SimplePH LDC")
 
 parser.add_argument(
     "-np", "--num-threads",
@@ -18,27 +17,33 @@ parser.add_argument(
 parser.add_argument(
     "-res", "--resolution",
     type=int,
-    default=40,
+    default=50,
     help="Resolution"
+)
+
+parser.add_argument(
+    "-re", "--reynolds-number",
+    type=float,
+    default=1000.0,
+    help="Reynolds number"
 )
 
 args = parser.parse_args()
 
 num_threads = args.num_threads
-
 print(f"Setting {num_threads} OpenMP threads")
 SimplePH.set_omp_threads(num_threads)
 
 # create particle layout
 def create_particles():
     parts = []
-    for i in range(res):
+    for i in range(bcresx):
         for j in range(bcresy):
             p = SimplePH.Particle()
 
             # set position
             p.x = [
-                -Lx/2 + dx/2 + i * dx,
+                -bcLx/2 + dx/2 + i * dx,
                 -bcLy/2 + dx/2 + j * dx
             ]
 
@@ -49,21 +54,25 @@ def create_particles():
             p.m = m
             p.rho = rho
 
-            # set type (type = 0: fluid, type = 1: boundary)
+            # set type
             p.type = 0
-            if p.x[1] > Ly/2 or p.x[1] < -Ly/2:
+            if  p.x[0] > Lx/2 or p.x[0] < -Lx/2 or p.x[1] > Ly/2 or p.x[1] < -Ly/2:
                 p.type = 1
+            # set wall velocity of upper wall
+            if p.x[1] > Ly/2:
+                p.v = [1.0, 0.0]
 
             parts.append(p)
     return parts
 
+
 # geometry
-Lx = 0.1
-Ly = 0.1
+Lx = 1.0
+Ly = 1.0
 
 # resolution
 res = args.resolution
-dx = Ly / res
+dx = Lx / res
 
 print("res:", res)
 print("dx:", dx)
@@ -79,45 +88,54 @@ print("rcut:", rcut)
 # boundary layer size
 bcpartcount = math.ceil(rcut / dx)
 bcresy = 2 * bcpartcount + res
+bcresx = bcresy
 bcLy = bcresy * dx
+bcLx= bcLy
+
+print("res:", res)
+print("bcresx:", bcresx)
+print("bcresy:", bcresy)
 
 print("bcpartcount:", bcpartcount)
 print("bcresy:", bcresy)
 print("bcLy:", bcLy)
 
 # material params
-rho = 1000.0
+rho = 1.0
 V = dx * dx
 m = rho * V
-mu = 1.0
+
+# Reynolds number
+# Re = (rho * vref * Lref) / mu
+Re = args.reynolds_number
+print("Re:", Re)
 
 print("m:", m)
 print("V:", V)
 
 # body force
-b = [0.0024, 0.0]
+b = [0.0, 0.0]
 
 # reference values
-vmax = (rho * b[0] * (Ly/2)**2) / (2 * mu)
+vmax = 1.0
+# vref = (2/3) * vmax
+# Lref = Lx / 2
 vref = vmax
 Lref = Ly
 
 print("vref:", vref)
 
-# characteristic velocity and length (mean velocity and half channel height)
-vchar = (2/3) * vmax
-Lchar = Ly / 2
-# Reynolds number
-Re = (rho * vchar * Lchar) / mu
-print("Re:", Re)
+# viscosity
+mu = (rho * vref * Lref) / Re   
+print("mu:", mu)
 
 # density fluctuation
-rho_fluct = 0.01
+rho_fluct = 0.05
 
 # solver setup
 solver = SimplePH.Solver(
     h=h,
-    Lx=Lx,
+    Lx=bcLx,
     Ly=bcLy,
     dx0=dx,
     Lref=Lref,
@@ -132,7 +150,7 @@ solver.set_viscosity(mu)
 solver.set_density(rho, rho_fluct)
 
 # set body force
-solver.set_acceleration(b,0)
+solver.set_acceleration(b)
 
 # compute wavespeed
 solver.compute_soundspeed()
@@ -140,13 +158,13 @@ solver.compute_soundspeed()
 # compute timestep
 solver.compute_timestep()
 
-# equation of state
-solver.set_eos(SimplePH.EOSType.Tait)
+# equation of state and back pressure factor (bp_fac*rho0*c^2)
+solver.set_eos(SimplePH.EOSType.Tait, 0.0, 0.0)
 
 # use artificial viscosity
 # solver.activate_artificial_viscosity(0.01)
 
-# use tensile instability correction
+# use artificial viscosity
 # solver.activate_tensile_instability_correction()
 
 # # use xsph filter
@@ -160,16 +178,17 @@ solver.set_particles(create_particles())
 
 # integrator
 solver.set_integrator(SimplePH.VerletIntegrator())
-# solver.set_integrator(SimplePH.EulerIntegrator())
 # solver.set_integrator(SimplePH.TransportVelocityVerletIntegrator())
+# solver.set_integrator(SimplePH.EulerIntegrator())
 
 # density method
 # solver.set_density_method(SimplePH.DensityMethod.Continuity)
 solver.set_density_method(SimplePH.DensityMethod.Summation)
 
 # set output name
-output_name = "poiseuille_flow"
+# output_name = f"lid_driven_cavity_tv_re{Re}_res{res}"
+output_name = f"lid_driven_cavity_re{Re}_res{res}"
 solver.set_output_name(output_name)
 
 # run simulation
-solver.run(5001, vtk_freq=100, log_freq=50)
+solver.run(20001, vtk_freq=500, log_freq=100)

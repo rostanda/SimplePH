@@ -6,13 +6,20 @@ import pathlib
 import sys
 import argparse
 
-parser = argparse.ArgumentParser(description="SimplePH lid driven cavity")
+parser = argparse.ArgumentParser(description="SimplePH poiseuille flow")
 
 parser.add_argument(
     "-np", "--num-threads",
     type=int,
     default=1,
     help="Number of OpenMP threads"
+)
+
+parser.add_argument(
+    "-res", "--resolution",
+    type=int,
+    default=40,
+    help="Resolution"
 )
 
 args = parser.parse_args()
@@ -42,21 +49,25 @@ def create_particles():
             p.m = m
             p.rho = rho
 
-            # set type (type = 0: fluid, type = 1: boundary)
+            # set type
             p.type = 0
             if p.x[1] > Ly/2 or p.x[1] < -Ly/2:
                 p.type = 1
+            # set wall velocity of upper wall
+            if p.x[1] > Ly/2:
+                p.v = [0.002, 0.0]
 
             parts.append(p)
     return parts
+
 
 # geometry
 Lx = 0.1
 Ly = 0.1
 
 # resolution
-res = 40
-dx = Ly / res
+res = args.resolution
+dx = Lx / res
 
 print("res:", res)
 print("dx:", dx)
@@ -88,20 +99,17 @@ print("m:", m)
 print("V:", V)
 
 # body force
-b = [0.0024, 0.0]
+b = [0.0, 0.0]
 
 # reference values
-vmax = (rho * b[0] * (Ly/2)**2) / (2 * mu)
+vmax = 0.002
 vref = vmax
 Lref = Ly
 
 print("vref:", vref)
 
-# characteristic velocity and length (mean velocity and half channel height)
-vchar = (2/3) * vmax
-Lchar = Ly / 2
 # Reynolds number
-Re = (rho * vchar * Lchar) / mu
+Re = (rho * vref * Lref) / mu
 print("Re:", Re)
 
 # density fluctuation
@@ -134,32 +142,34 @@ solver.compute_soundspeed()
 solver.compute_timestep()
 
 # equation of state
-solver.set_eos(SimplePH.EOSType.Linear,0.0,1.0)
+solver.set_eos(SimplePH.EOSType.Tait)
 
-# # use artificial viscosity
+# use artificial viscosity
 # solver.activate_artificial_viscosity(0.01)
 
-# # use artificial viscosity
+# use tensile instability correction
 # solver.activate_tensile_instability_correction()
 
 # # use xsph filter
 # solver.activate_xsph_filter(0.1)
 
-# use transport velocity formulation
-solver.activate_transport_velocity()
+# # use transport velocity formulation
+# solver.activate_transport_velocity()
 
 # set particles
 solver.set_particles(create_particles())
 
 # integrator
-solver.set_integrator(SimplePH.TransportVelocityVerletIntegrator())
+solver.set_integrator(SimplePH.VerletIntegrator())
+# solver.set_integrator(SimplePH.EulerIntegrator())
+# solver.set_integrator(SimplePH.TransportVelocityVerletIntegrator())
 
 # density method
 # solver.set_density_method(SimplePH.DensityMethod.Continuity)
 solver.set_density_method(SimplePH.DensityMethod.Summation)
 
 # set output name
-output_name = "poiseuille_flow_tv"
+output_name = "couette_flow"
 solver.set_output_name(output_name)
 
 # run simulation
