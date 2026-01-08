@@ -5,6 +5,7 @@ find_package(OpenMP REQUIRED)
 add_library(sph_core STATIC
     solver/solver.cpp
     utils/vtk_writer.cpp
+    operators/PressureViscousForce.cpp
 )
 
 target_include_directories(sph_core PUBLIC 
@@ -15,6 +16,7 @@ target_include_directories(sph_core PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/neighbor
     ${CMAKE_CURRENT_SOURCE_DIR}/sph
     ${CMAKE_CURRENT_SOURCE_DIR}/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/operators
 )
 
 # Link OpenMP to sph_core (THIS IS THE FIX)

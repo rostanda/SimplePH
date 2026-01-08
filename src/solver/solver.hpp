@@ -14,11 +14,16 @@
 #include "tv_verlet_integrator.hpp"
 #include "vtk_writer.hpp"
 
+#include "PressureViscousForce.hpp"
+
+
 class Solver
 {
 public:
     // constructor
     Solver(double h, double Lx, double Ly, double dx0, double Lref, double vref, KernelType kernel_type);
+
+    PressureViscousForce pv_force;  // Member-Variable
 
     void set_particles(const std::vector<Particle> &parts);
     void step(int timestep);
