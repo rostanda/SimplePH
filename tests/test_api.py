@@ -66,7 +66,7 @@ class TestMaterialProperties:
         )
         mu = 1.0
         solver.set_viscosity(mu)
-        assert solver.mu == mu
+        assert solver.get_viscosity() == mu
 
     def test_set_density(self):
         """Verify density setter."""
@@ -77,8 +77,7 @@ class TestMaterialProperties:
         rho0 = 1000.0
         rho_fluct = 0.01
         solver.set_density(rho0, rho_fluct)
-        assert solver.rho0 == rho0
-        assert solver.rho_fluct == rho_fluct
+        assert solver.get_density() == (rho0, rho_fluct)
 
     def test_set_acceleration(self):
         """Verify body force setter."""
@@ -88,8 +87,9 @@ class TestMaterialProperties:
         )
         b = [0.0024, 0.0]
         solver.set_acceleration(b)
-        assert abs(solver.b[0] - b[0]) < 1e-10
-        assert abs(solver.b[1] - b[1]) < 1e-10
+        acc = solver.get_acceleration()
+        assert abs(acc[0] - b[0]) < 1e-12
+        assert abs(acc[1] - b[1]) < 1e-12
 
 
 class TestPhysicsConfiguration:
@@ -205,30 +205,16 @@ class TestParticles:
 class TestStabilityParameters:
     """Test stability parameter computation."""
 
-    def test_compute_soundspeed(self):
-        """Verify soundspeed is computed (should be positive)."""
+    def test_compute_soundspeed_and_timestep(self):
+        """Verify soundspeed and timestep is computed (should be positive)."""
         solver = SimplePH.Solver(
             h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
             Lref=0.1, vref=0.006, kernel_type=SimplePH.KernelType.CubicSpline
         )
         solver.set_density(rho0=1000.0, rho_fluct=0.01)
         solver.set_acceleration([0.0024, 0.0])
-        
-        solver.compute_soundspeed()
-        # No exception = test passes
 
-    def test_compute_timestep(self):
-        """Verify timestep is computed (should be positive)."""
-        solver = SimplePH.Solver(
-            h=0.01, Lx=0.1, Ly=0.1, dx0=0.005,
-            Lref=0.1, vref=0.006, kernel_type=SimplePH.KernelType.CubicSpline
-        )
-        solver.set_density(rho0=1000.0, rho_fluct=0.01)
-        solver.set_viscosity(mu=1.0)
-        solver.set_acceleration([0.0024, 0.0])
-        
-        solver.compute_soundspeed()
-        solver.compute_timestep()
+        solver.compute_soundspeed_and_timestep()
         # No exception = test passes
 
 class TestAdvancedSolverFeatures:
@@ -242,8 +228,7 @@ class TestAdvancedSolverFeatures:
         )
         solver.set_density(1000.0, 0.01)
         solver.set_viscosity(1.0)
-        solver.compute_soundspeed()
-        solver.compute_timestep()
+        solver.compute_soundspeed_and_timestep()
         solver.activate_artificial_viscosity(alpha=1.5)  # Test AV activation
 
     def test_activate_tensile_instability_correction(self):
@@ -291,8 +276,7 @@ class TestSimulationExecution:
         solver.set_density_method(SimplePH.DensityMethod.Continuity)
         solver.set_integrator(SimplePH.VerletIntegrator())
         
-        solver.compute_soundspeed()
-        solver.compute_timestep()
+        solver.compute_soundspeed_and_timestep()
         
         # Create 3 test particles
         particles = []

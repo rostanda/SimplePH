@@ -3,6 +3,10 @@
 #include "solver.hpp"
 #include "particle.hpp"
 #include "integrator.hpp"
+#include "euler_integrator.hpp"
+#include "verlet_integrator.hpp"
+#include "tv_verlet_integrator.hpp"
+#include "density_calculator.hpp"
 
 #include <omp.h>
 
@@ -31,24 +35,21 @@ PYBIND11_MODULE(SimplePH, m)
     py::class_<Solver>(m, "Solver")
         .def(py::init<double, double, double, double, double, double, KernelType>(),
              py::arg("h"), py::arg("Lx"), py::arg("Ly"), py::arg("dx0"), py::arg("Lref"), py::arg("vref"), py::arg("kernel_type"))
-        .def_readwrite("b", &Solver::b)
-        .def_readwrite("mu", &Solver::mu)
-        .def_readwrite("rho0", &Solver::rho0)
-        .def_readwrite("rho_fluct", &Solver::rho_fluct)
-        .def("set_particles", &Solver::set_particles)
+       .def("set_viscosity", &Solver::set_viscosity,
+             py::arg("mu"))
+        .def("get_viscosity", &Solver::get_viscosity)
+        .def("set_density", &Solver::set_density,
+             py::arg("rho0"),
+             py::arg("rho_fluct") = 0.01)
+        .def("get_density", &Solver::get_density)
         .def("set_acceleration", 
             &Solver::set_acceleration,
             py::arg("b_") = std::array<double,2>{0.0, 0.0},
             py::arg("damp_timesteps_") = 0,
             "Set constant acceleration vector b = [bx, by], with optional damping timesteps")
-        .def("set_viscosity", &Solver::set_viscosity)
-        .def("set_viscosity", &Solver::set_viscosity,
-             py::arg("mu"))
-        .def("set_density", &Solver::set_density,
-             py::arg("rho0"),
-             py::arg("rho_fluct") = 0.01)
-        .def("compute_soundspeed", &Solver::compute_soundspeed)
-        .def("compute_timestep", &Solver::compute_timestep)
+        .def("get_acceleration", &Solver::get_acceleration)
+        .def("set_particles", &Solver::set_particles)
+        .def("compute_soundspeed_and_timestep", &Solver::compute_soundspeed_and_timestep)
         .def("step", &Solver::step)
         .def("run", &Solver::run,
              py::arg("steps"),
@@ -84,9 +85,9 @@ PYBIND11_MODULE(SimplePH, m)
         .value("Linear", EOSType::Linear)
         .export_values();
 
-    py::enum_<Solver::DensityMethod>(m, "DensityMethod")
-        .value("Summation", Solver::DensityMethod::Summation)
-        .value("Continuity", Solver::DensityMethod::Continuity)
+    py::enum_<DensityMethod>(m, "DensityMethod")
+        .value("Summation", DensityMethod::Summation)
+        .value("Continuity", DensityMethod::Continuity)
         .export_values();
 
     py::class_<Integrator, std::shared_ptr<Integrator>>(m, "Integrator");

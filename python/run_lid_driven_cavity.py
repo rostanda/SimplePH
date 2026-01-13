@@ -152,11 +152,8 @@ solver.set_density(rho, rho_fluct)
 # set body force
 solver.set_acceleration(b)
 
-# compute wavespeed
-solver.compute_soundspeed()
-
-# compute timestep
-solver.compute_timestep()
+# compute soundspeed and timestep
+solver.compute_soundspeed_and_timestep()
 
 # equation of state and back pressure factor (bp_fac*rho0*c^2)
 solver.set_eos(SimplePH.EOSType.Tait, 0.0, 0.0)
