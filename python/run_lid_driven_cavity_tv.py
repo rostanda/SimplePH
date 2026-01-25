@@ -7,32 +7,19 @@ import argparse
 
 parser = argparse.ArgumentParser(description="SimplePH LDC TV")
 
-parser.add_argument(
-    "-np", "--num-threads",
-    type=int,
-    default=1,
-    help="Number of OpenMP threads"
-)
-
-parser.add_argument(
-    "-res", "--resolution",
-    type=int,
-    default=50,
-    help="Resolution"
-)
-
-parser.add_argument(
-    "-re", "--reynolds-number",
-    type=float,
-    default=1000.0,
-    help="Reynolds number"
-)
+parser.add_argument("-np", "--num-threads", type=int, default=1, help="Number of OpenMP threads")
+parser.add_argument("-res", "--resolution", type=int, default=50,help="Resolution")
+parser.add_argument("-re", "--reynolds-number", type=float, default=1000.0, help="Reynolds number")
+parser.add_argument("-steps", "--steps", type=int, default=20001, help="Number of steps")
+parser.add_argument("-v", "--verbose", action="store_true")
 
 args = parser.parse_args()
 
 num_threads = args.num_threads
-print(f"Setting {num_threads} OpenMP threads")
+steps = args.steps
 SimplePH.set_omp_threads(num_threads)
+if args.verbose:
+    print(f"Setting {num_threads} OpenMP threads")
 
 # create particle layout
 def create_particles():
@@ -74,16 +61,18 @@ Ly = 1.0
 res = args.resolution
 dx = Lx / res
 
-print("res:", res)
-print("dx:", dx)
+if args.verbose:
+    print("res:", res)
+    print("dx:", dx)
 
 # kernel params
 kappa = 2.0
 h = 1.7 * dx
 rcut = kappa * h
 
-print("h:", h)
-print("rcut:", rcut)
+if args.verbose:
+    print("h:", h)
+    print("rcut:", rcut)
 
 # boundary layer size
 bcpartcount = math.ceil(rcut / dx)
@@ -92,13 +81,13 @@ bcresx = bcresy
 bcLy = bcresy * dx
 bcLx= bcLy
 
-print("res:", res)
-print("bcresx:", bcresx)
-print("bcresy:", bcresy)
-
-print("bcpartcount:", bcpartcount)
-print("bcresy:", bcresy)
-print("bcLy:", bcLy)
+if args.verbose:
+    print("res:", res)
+    print("bcresx:", bcresx)
+    print("bcresy:", bcresy)
+    print("bcpartcount:", bcpartcount)
+    print("bcresy:", bcresy)
+    print("bcLy:", bcLy)
 
 # material params
 rho = 1.0
@@ -108,10 +97,11 @@ m = rho * V
 # Reynolds number
 # Re = (rho * vref * Lref) / mu
 Re = args.reynolds_number
-print("Re:", Re)
 
-print("m:", m)
-print("V:", V)
+if args.verbose:
+    print("Re:", Re)
+    print("m:", m)
+    print("V:", V)
 
 # body force
 b = [0.0, 0.0]
@@ -122,12 +112,13 @@ vmax = 1.0
 # Lref = Lx / 2
 vref = vmax
 Lref = Ly
-
-print("vref:", vref)
+if args.verbose:
+    print("vref:", vref)
 
 # viscosity
-mu = (rho * vref * Lref) / Re   
-print("mu:", mu)
+mu = (rho * vref * Lref) / Re
+if args.verbose:   
+    print("mu:", mu)
 
 # density fluctuation
 rho_fluct = 0.05
@@ -183,9 +174,8 @@ solver.set_integrator(SimplePH.TransportVelocityVerletIntegrator())
 solver.set_density_method(SimplePH.DensityMethod.Summation)
 
 # set output name
-# output_name = f"lid_driven_cavity_tv_re{Re}_res{res}"
 output_name = f"lid_driven_cavity_tv_re{Re}_res{res}"
 solver.set_output_name(output_name)
 
 # run simulation
-solver.run(20001, vtk_freq=500, log_freq=100)
+solver.run(steps, vtk_freq=500, log_freq=100)

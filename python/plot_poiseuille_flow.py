@@ -52,10 +52,31 @@ def load_vtu(filename='example.vtu', dx=0.0):
 
     return data_points_y, data_vels_x
 
+def get_timesteps(Re):
+    if Re == 0.1:
+        ts = [5000, 1000, 500, 200]
+    elif Re == 10.0:
+        ts = [20000, 5000, 2500, 500]
+    else:
+        raise ValueError(f"Time steps not available for Re = {Re}")
+
+    return ts
+
+def get_dt(Re):
+    if Re == 0.1:
+        dt = 0.002257813
+    elif Re == 10.0:
+        dt = 0.000354167
+    else:
+        raise ValueError(f"dt not available for Re = {Re}")
+    return dt
+
 def main():
     parser = argparse.ArgumentParser(description='Plot Poiseuille flow velocity profile')
-    parser.add_argument('vtu_dir', nargs='?', default='.', help='Directory with VTU files')
-    parser.add_argument('--out', default='poiseuille_flow.png', help='Output filename')
+    parser.add_argument('-Re', type=float, default=0.1, help='Reynolds number')
+    parser.add_argument('-res', type=int, default=40, help='Resolution')
+    parser.add_argument('-vtu_dir', default=None, help='VTU directory (optional override)')
+    parser.add_argument('-out', default=None, help='Output filename (optional override)')
     args = parser.parse_args()
 
     # Enable LaTeX rendering
@@ -67,18 +88,18 @@ def main():
     plt.rcParams.update({'font.size': 10})
 
     # Physical parameters (must match run_poiseuille_flow.py)
-    fx = 2.4e-3                 # [m/s**2]
     lref = 0.1                  # [m]
     rho0 = 1000.0               # [kg/m**3]
     viscosity = 1.0             # [Pa s]
-    dx = lref / 40
+    res = args.res
+    dx = lref / res
+    Re = args.Re
 
-    refvel = (rho0 * fx * (lref/2)**2) / (2 * viscosity)
-    print('refvel: ', refvel)
-    charvel = refvel * (2/3)
-    charL = 0.5 * lref
-    RE = (rho0 * charvel * charL) / viscosity
-    print('RE: ', RE)
+    # Calculate body force for given Re
+    fx = (24.0 * viscosity**2 * Re) / (rho0**2 * lref**3)
+    print('fx: ', fx)
+    vmax = (rho0 * fx * (lref/2)**2) / (2 * viscosity)
+
 
     # Output figure
     fig_width_cm = 8.0
@@ -88,31 +109,37 @@ def main():
 
     fig, ax = plt.subplots(1, 1, figsize=(fig_width_inches, fig_height_inches))
 
-    # Load VTU files
-    vtu_dir = pathlib.Path(args.vtu_dir)
-    filenames = sorted(vtu_dir.glob('poiseuille_flow_00*.vtu'))
-    
-    if len(filenames) == 0:
-        print(f"No VTU files found in {vtu_dir}")
-        sys.exit(1)
+    # Default VTU directory
+    if args.vtu_dir is None:
+        vtu_dir = pathlib.Path(f"poiseuille_flow_re{Re}_res{res}")
+    else:
+        vtu_dir = pathlib.Path(args.vtu_dir)
 
-    # Define timesteps (matches VTU filenames)
-    t_steps = [5000, 1000, 500, 200]
+    # Default output name
+    if args.out is None:
+        out_file = f"poiseuille_flow_re{Re}_res{res}.png"
+    else:
+        out_file = args.out
 
-    dt = 0.002257813
-    t_times = [t * dt for t in t_steps]
+    # Get timesteps (matches VTU filenames)
+    ts = get_timesteps(Re)
 
-    # VTU directory
-    vtu_dir = pathlib.Path(args.vtu_dir)
-
-    # Select files based on t_steps
+    # Load VTU file at timestep ts
     sel_filenames = []
-    for t in t_steps:
-        filename = vtu_dir / f"poiseuille_flow_{t:05d}.vtu"
+    for t in ts:
+        filename = (
+            vtu_dir /
+            f"poiseuille_flow_re{Re}_res{res}_{t:05d}.vtu"
+        )
         if filename.exists():
             sel_filenames.append(filename)
         else:
-            print(f"Warning: file {filename} not found")
+            raise FileNotFoundError(f"VTU file not found: {filename}")
+
+
+    dt = get_dt(Re)
+
+    t_times = [t * dt for t in ts]
 
     colors = ['red', 'green', 'blue', 'orange']
     labels = [fr'$t = {t:.2f}$s' for t in t_times]
@@ -156,15 +183,15 @@ def main():
             ax.scatter(vel_x_sim, points_y_sim, s=7.0, color=colors[i], label=labels[i], zorder=5)
 
     ax.set_ylim([-lref/2, lref/2])
-    ax.set_xlim([0.0, 0.004])
+    ax.set_xlim([0.0, vmax*(4/3)])
 
     y_ticks = np.linspace(-lref/2, lref/2, 5)
-    x_ticks = np.linspace(0.0, 0.004, 5)
+    x_ticks = np.linspace(0.0, vmax*(4/3), 5)
     ax.set_yticks(y_ticks)
     ax.set_xticks(x_ticks)
 
-    ax.set_ylabel(r'$\mathrm{x}_2 \,[\mathrm{m}]$', fontsize=10)
-    ax.set_xlabel(r'$\mathrm{v}_{\mathrm{1}}\,[\mathrm{m}/\mathrm{s}]$', fontsize=10)
+    ax.set_ylabel(r'$\mathrm{y} \,[\mathrm{m}]$', fontsize=10)
+    ax.set_xlabel(r'$\mathrm{v}_{\mathrm{x}}\,[\mathrm{m}/\mathrm{s}]$', fontsize=10)
 
     formatterx = ScalarFormatter(useMathText=True)
     formatterx.set_powerlimits((2, 3))
@@ -178,10 +205,8 @@ def main():
     ax.legend(fontsize=6, fancybox=False)
 
     # plt.show()
-    # plt.savefig(args.out, dpi=300, bbox_inches='tight', pad_inches=0.02)
-    plt.savefig(args.out, bbox_inches='tight', pad_inches=0.02)
-
-    print(f"Saved plot to {args.out}")
+    plt.savefig(f'{out_file}',  dpi=300, bbox_inches='tight', pad_inches=0.02)
+    print(f"Saved plot to {out_file}")
 
 
 if __name__ == '__main__':

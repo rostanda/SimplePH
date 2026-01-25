@@ -8,26 +8,20 @@ import argparse
 
 parser = argparse.ArgumentParser(description="SimplePH poiseuille flow")
 
-parser.add_argument(
-    "-np", "--num-threads",
-    type=int,
-    default=1,
-    help="Number of OpenMP threads"
-)
+parser.add_argument("-np", "--num-threads", type=int, default=1, help="Number of OpenMP threads")
+parser.add_argument('-Re', type=float, default=0.1, help='Reynolds number')
+parser.add_argument("-res", "--resolution", type=int, default=40, help="Resolution")
+parser.add_argument("-steps", "--steps", type=int, default=20001, help="Number of steps")
+parser.add_argument("-v", "--verbose", action="store_true")
 
-parser.add_argument(
-    "-res", "--resolution",
-    type=int,
-    default=40,
-    help="Resolution"
-)
 
 args = parser.parse_args()
 
 num_threads = args.num_threads
-
-print(f"Setting {num_threads} OpenMP threads")
+steps = args.steps
 SimplePH.set_omp_threads(num_threads)
+if args.verbose:
+    print(f"Setting {num_threads} OpenMP threads")
 
 # create particle layout
 def create_particles():
@@ -94,8 +88,13 @@ mu = 1.0
 print("m:", m)
 print("V:", V)
 
+# Calculate body force for given Re
+lref = Ly
+Re = args.Re
+fx = (24.0 * mu**2 * Re) / (rho**2 * lref**3)
+
 # body force
-b = [0.0024, 0.0]
+b = [fx, 0.0]
 
 # reference values
 vmax = (rho * b[0] * (Ly/2)**2) / (2 * mu)
@@ -139,6 +138,7 @@ solver.compute_soundspeed_and_timestep()
 
 # equation of state
 solver.set_eos(SimplePH.EOSType.Tait)
+# solver.set_eos(SimplePH.EOSType.Linear, 0.0, 1.0)
 
 # use artificial viscosity
 # solver.activate_artificial_viscosity(0.01)
@@ -165,8 +165,8 @@ solver.set_integrator(SimplePH.VerletIntegrator())
 solver.set_density_method(SimplePH.DensityMethod.Summation)
 
 # set output name
-output_name = "poiseuille_flow"
+output_name = f"poiseuille_flow_re{Re}_res{res}"
 solver.set_output_name(output_name)
 
 # run simulation
-solver.run(5001, vtk_freq=100, log_freq=50)
+solver.run(steps, vtk_freq=100, log_freq=100)

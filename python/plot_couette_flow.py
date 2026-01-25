@@ -52,10 +52,31 @@ def load_vtu(filename='example.vtu', dx=0.0):
 
     return data_points_y, data_vels_x
 
+def get_timesteps(Re):
+    if Re == 0.1:
+        ts = [5000, 500, 200, 100]
+    elif Re == 10.0:
+        ts = [10000, 2000, 1000, 200]
+    else:
+        raise ValueError(f"Time steps not available for Re = {Re}")
+
+    return ts
+
+def get_dt(Re):
+    if Re == 0.1:
+        dt = 0.002257813
+    elif Re == 10.0:
+        dt = 0.000531250
+    else:
+        raise ValueError(f"dt not available for Re = {Re}")
+    return dt
+
 def main():
     parser = argparse.ArgumentParser(description='Plot Couette flow velocity profile')
-    parser.add_argument('vtu_dir', nargs='?', default='.', help='Directory with VTU files')
-    parser.add_argument('--out', default='couette_flow.png', help='Output filename')
+    parser.add_argument('-Re', type=float, default=0.1, help='Reynolds number')
+    parser.add_argument('-res', type=int, default=40, help='Resolution')
+    parser.add_argument('-vtu_dir', default=None, help='VTU directory (optional override)')
+    parser.add_argument('-out', default=None, help='Output filename (optional override)')
     args = parser.parse_args()
 
     # Enable LaTeX rendering
@@ -68,18 +89,18 @@ def main():
 
     # Physical parameters (must match run_couette_flow.py)
     fx = 0.0                    # [m/s**2]
-    vwall = 0.002               # [m/s]
+    # vwall = 0.002               # [m/s]
     lref = 0.1                  # [m]
     rho0 = 1000.0               # [kg/m**3]
     viscosity = 1.0             # [Pa s]
-    dx = lref / 40
+    res = args.res
+    dx = lref / res
 
-    refvel = vwall/2
-    print('refvel: ', refvel)
-    charvel = refvel
-    charL = lref
-    RE = (rho0 * charvel * charL) / viscosity
-    print('RE: ', RE)
+    # Calculate upper wall velocity using Re
+    Re = args.Re
+    vwall = (2.0 * viscosity * Re) / (rho0 * lref)
+    print('vwall: ', vwall)
+    vmax = vwall
 
     # Output figure
     fig_width_cm = 8.0
@@ -89,31 +110,36 @@ def main():
 
     fig, ax = plt.subplots(1, 1, figsize=(fig_width_inches, fig_height_inches))
 
-    # Load VTU files
-    vtu_dir = pathlib.Path(args.vtu_dir)
-    filenames = sorted(vtu_dir.glob('couette_flow_00*.vtu'))
-    
-    if len(filenames) == 0:
-        print(f"No VTU files found in {vtu_dir}")
-        sys.exit(1)
+    # Default VTU directory
+    if args.vtu_dir is None:
+        vtu_dir = pathlib.Path(f"couette_flow_re{Re}_res{res}")
+    else:
+        vtu_dir = pathlib.Path(args.vtu_dir)
 
-    # Define timesteps (matches VTU filenames)
-    t_steps = [5000, 500, 200, 100]
+    # Default output name
+    if args.out is None:
+        out_file = f"couette_flow_re{Re}_res{res}.png"
+    else:
+        out_file = args.out
 
-    dt = 0.002257813
-    t_times = [t * dt for t in t_steps]
+    # Get timesteps (matches VTU filenames)
+    ts = get_timesteps(Re)
 
-    # VTU directory
-    vtu_dir = pathlib.Path(args.vtu_dir)
-
-    # Select files based on t_steps
+    # Load VTU file at timestep ts
     sel_filenames = []
-    for t in t_steps:
-        filename = vtu_dir / f"couette_flow_{t:05d}.vtu"
+    for t in ts:
+        filename = (
+            vtu_dir /
+            f"couette_flow_re{Re}_res{res}_{t:05d}.vtu"
+        )
         if filename.exists():
             sel_filenames.append(filename)
         else:
-            print(f"Warning: file {filename} not found")
+            raise FileNotFoundError(f"VTU file not found: {filename}")
+
+    dt = get_dt(Re)
+
+    t_times = [t * dt for t in ts]
 
     colors = ['red', 'green', 'blue', 'orange']
     labels = [fr'$t = {t:.2f}$s' for t in t_times]
@@ -128,9 +154,6 @@ def main():
         vel_ana = []
         for i in range(xaxis.shape[0]):
             # Couette profile: v(x) = (vwall)/(lref) * x
-            # Poiseuille profile: v(x) = (rho*fx)/(2*mu) * x * (x - lref)
-            # with x in [-lref/2, lref/2]
-            # vel_temp = (rho0 * fx) / (2.0 * viscosity) * (xaxis[i] + lref/2) * (xaxis[i] - lref/2)
             vel_temp = (vwall/lref)*xaxis[i]
 
             # Add transient Fourier series
@@ -139,16 +162,11 @@ def main():
             for n in range(len(series)):
                 vel_temp_sum += ((2*vwall)/(series[n]*np.pi))*(-1)**series[n]*np.sin((series[n]*np.pi*xaxis[i])/lref) \
                     * np.exp(-(viscosity*series[n]**2*np.pi**2*t_val)/(rho0*lref**2))
-            # for n in range(len(series)):
-            #     vel_temp_sum += (4 * fx * rho0 * lref**2) / (viscosity * np.pi**3 * (2*series[n]+1)**3) \
-            #         * np.sin(((np.pi * (xaxis[i] + lref/2)) / lref) * (2*series[n]+1)) \
-            #         * np.exp(-(((2*series[n]+1)**2 * np.pi**2 * viscosity) / (rho0 * lref**2)) * t_val)
             
             vel_temp = vel_temp + vel_temp_sum
             vel_ana.append(vel_temp)
         
         vel_ana = np.asarray(vel_ana)
-        # vel_ana = -vel_ana  # Negate for flow direction
         vel_ana_dict[t_idx] = vel_ana
 
         ax.plot(vel_ana, xaxis-lref/2.0, color=colors[t_idx], linewidth=0.8, zorder=5)
@@ -162,15 +180,15 @@ def main():
             ax.scatter(vel_x_sim, points_y_sim, s=7.0, color=colors[i], label=labels[i], zorder=5)
 
     ax.set_ylim([-lref/2, lref/2])
-    ax.set_xlim([0.0, 0.002])
+    ax.set_xlim([0.0, vmax])
 
     y_ticks = np.linspace(-lref/2, lref/2, 5)
-    x_ticks = np.linspace(0.0, 0.002, 5)
+    x_ticks = np.linspace(0.0, vmax, 5)
     ax.set_yticks(y_ticks)
     ax.set_xticks(x_ticks)
 
-    ax.set_ylabel(r'$\mathrm{x}_2 \,[\mathrm{m}]$', fontsize=10)
-    ax.set_xlabel(r'$\mathrm{v}_{\mathrm{1}}\,[\mathrm{m}/\mathrm{s}]$', fontsize=10)
+    ax.set_ylabel(r'$\mathrm{y} \,[\mathrm{m}]$', fontsize=10)
+    ax.set_xlabel(r'$\mathrm{v}_{\mathrm{x}}\,[\mathrm{m}/\mathrm{s}]$', fontsize=10)
 
     formatterx = ScalarFormatter(useMathText=True)
     formatterx.set_powerlimits((2, 3))
@@ -182,13 +200,9 @@ def main():
     ax.xaxis.set_major_formatter(formatterx)
 
     ax.legend(fontsize=6, fancybox=False)
-
-    # plt.show()
-    # plt.savefig(args.out, dpi=300, bbox_inches='tight', pad_inches=0.02)
-    plt.savefig(args.out, bbox_inches='tight', pad_inches=0.02)
-
-    print(f"Saved plot to {args.out}")
-
+ 
+    plt.savefig(f'{out_file}',  dpi=300, bbox_inches='tight', pad_inches=0.02)
+    print(f"Saved plot to {out_file}")
 
 if __name__ == '__main__':
     main()

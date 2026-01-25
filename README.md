@@ -39,6 +39,14 @@ python3 run_poiseuille_flow.py
 
 Output VTU files are written to `poiseuille_flow/`.
 
+### Run Validation
+
+```bash
+cd python
+bash run_all.sh
+```
+A pdf-file with results of all Boundary Value Problems (BVPs) `report.pdf` compared with anaylitcal or experimental results is written to `latex/`.
+
 ### OpenMP Thread Control
 
 The example script `run_poiseuille_flow.py` allows you to manually set the number of OpenMP threads:
@@ -51,12 +59,7 @@ Inside the script, OpenMP threads are configured via argument parser:
 ```bash
 parser = argparse.ArgumentParser(description="SimplePH simulation")
 
-parser.add_argument(
-    "-np", "--num-threads",
-    type=int,
-    default=1,
-    help="Number of OpenMP threads"
-)
+parser.add_argument("-np", "--num-threads", type=int, default=1, help="Number of OpenMP threads")
 
 args = parser.parse_args()
 
@@ -69,7 +72,7 @@ To fully utilize your CPU, pass your number of physical cores.
 ### Plot Results
 
 ```bash
-python3 plot_poiseuille_flow.py poiseuille_flow --out result.pdf
+python3 plot_poiseuille_flow.py
 ```
 
 ## Overview

@@ -8,26 +8,20 @@ import argparse
 
 parser = argparse.ArgumentParser(description="SimplePH couette flow")
 
-parser.add_argument(
-    "-np", "--num-threads",
-    type=int,
-    default=1,
-    help="Number of OpenMP threads"
-)
+parser.add_argument("-np", "--num-threads", type=int, default=1, help="Number of OpenMP threads")
+parser.add_argument('-Re', type=float, default=0.1, help='Reynolds number')
+parser.add_argument("-res", "--resolution", type=int, default=40, help="Resolution")
+parser.add_argument("-steps", "--steps", type=int, default=20001, help="Number of steps")
+parser.add_argument("-v", "--verbose", action="store_true")
 
-parser.add_argument(
-    "-res", "--resolution",
-    type=int,
-    default=40,
-    help="Resolution"
-)
 
 args = parser.parse_args()
 
 num_threads = args.num_threads
-
-print(f"Setting {num_threads} OpenMP threads")
+steps = args.steps
 SimplePH.set_omp_threads(num_threads)
+if args.verbose:
+    print(f"Setting {num_threads} OpenMP threads")
 
 # create particle layout
 def create_particles():
@@ -69,25 +63,28 @@ Ly = 0.1
 res = args.resolution
 dx = Lx / res
 
-print("res:", res)
-print("dx:", dx)
+if args.verbose:
+    print("res:", res)
+    print("dx:", dx)
 
 # kernel params
 kappa = 2.0
 h = 1.7 * dx
 rcut = kappa * h
 
-print("h:", h)
-print("rcut:", rcut)
+if args.verbose:
+    print("h:", h)
+    print("rcut:", rcut)
 
 # boundary layer size
 bcpartcount = math.ceil(rcut / dx)
 bcresy = 2 * bcpartcount + res
 bcLy = bcresy * dx
 
-print("bcpartcount:", bcpartcount)
-print("bcresy:", bcresy)
-print("bcLy:", bcLy)
+if args.verbose:
+    print("bcpartcount:", bcpartcount)
+    print("bcresy:", bcresy)
+    print("bcLy:", bcLy)
 
 # material params
 rho = 1000.0
@@ -95,28 +92,35 @@ V = dx * dx
 m = rho * V
 mu = 1.0
 
-print("m:", m)
-print("V:", V)
+if args.verbose:
+    print("m:", m)
+    print("V:", V)
 
 # body force
 b = [0.0, 0.0]
 
-# upper wall velocity
-vwall = 0.002
+# Calculate upper wall velocity for given Re
+lref = Ly
+Re = args.Re
+vwall = (2.0 * mu * Re) / (rho * lref)
+if args.verbose:
+    print("vwall:", vwall)
 
 # reference values
 vmax = vwall
 vref = vmax
 Lref = Ly
 
-print("vref:", vref)
+if args.verbose:
+    print("vref:", vref)
 
 # characteristic velocity and length (mean velocity and channel height)
 vchar = vmax / 2.0
 Lchar = Ly
 # Reynolds number
 Re = (rho * vchar * Lchar) / mu
-print("Re:", Re)
+if args.verbose:
+    print("Re:", Re)
 
 # density fluctuation
 rho_fluct = 0.01
@@ -172,8 +176,8 @@ solver.set_integrator(SimplePH.VerletIntegrator())
 solver.set_density_method(SimplePH.DensityMethod.Summation)
 
 # set output name
-output_name = "couette_flow"
+output_name = f"couette_flow_re{Re}_res{res}"
 solver.set_output_name(output_name)
 
 # run simulation
-solver.run(5001, vtk_freq=100, log_freq=50)
+solver.run(steps, vtk_freq=100, log_freq=50)
