@@ -110,6 +110,7 @@ def couette_analytical(y):
 # Test class
 class TestPhysicalFlows:
     
+    @pytest.mark.slow
     @pytest.mark.parametrize("res,steps", zip(poiseuille_resolutions, poiseuille_steps_list))
     def test_poiseuille_flow(self, res, steps):
         dx = Ly / res
@@ -161,6 +162,7 @@ class TestPhysicalFlows:
 
         assert L2_error < 0.3
 
+    @pytest.mark.slow
     @pytest.mark.parametrize("res,steps", zip(couette_resolutions, couette_steps_list))
     def test_couette_flow(self, res, steps):
         dx = Ly / res
