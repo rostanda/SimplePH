@@ -31,10 +31,7 @@ jobs:
       - name: Build C++ extension
         run: cmake --build build --target SimplePH -- -j$(nproc)
 
-      - name: Install Python binding
-        run: |
-          cd build
-          pip install .
-
       - name: Run fast tests only
-        run: pytest -m "not slow and not plot" -v --tb=short
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)/build
+          pytest -m "not slow and not plot" -v --tb=short
