@@ -1,5 +1,7 @@
 # SimplePH – Minimal SPH Solver
 
+![CI](https://github.com/rostanda/SimplePH/actions/workflows/ci.yml/badge.svg)
+
 A lightweight C++ implementation of a parallelized 2D weakly compressible Smoothed Particle Hydrodynamics (SPH) solver with Python bindings.
 
 ## Quick Start
