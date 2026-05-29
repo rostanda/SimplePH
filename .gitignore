@@ -26,7 +26,6 @@ env/
 .env/
 .venv/
 venv/
-build/             # if Python packages are built here
 dist/
 *.egg-info/
 
@@ -49,6 +48,19 @@ particles_*.vtu
 # OS files
 .DS_Store
 Thumbs.db
+
+# Generated plots
+python/plots/
+
+# LaTeX intermediate files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
 
 # GitHub Copilot instructions
 .github/copilot_instructions.md

@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/rostanda/SimplePH/actions/workflows/ci.yml/badge.svg)
 
-A lightweight C++ implementation of a parallelized 2D weakly compressible Smoothed Particle Hydrodynamics (SPH) solver with Python bindings.
+A lightweight C++ implementation of a parallelized 2D weakly compressible Smoothed Particle Hydrodynamics (SPH) solver with Python bindings, automated testing, containerized execution and reproducible validation workflows.
 
 ## Quick Start
 
@@ -77,6 +77,44 @@ To fully utilize your CPU, pass your number of physical cores.
 python3 plot_poiseuille_flow.py
 ```
 
+## Docker
+
+SimplePH can be built and executed in a fully reproducible containerized environment.
+
+Build the image:
+
+```bash
+docker build -t simpleph .
+```
+
+Make the helper script executable once:
+
+```bash
+chmod +x run_docker.sh
+```
+
+Run the complete validation suite:
+
+```bash
+./run_docker.sh bash python/run_all.sh
+```
+
+Run an individual simulation:
+
+```bash
+./run_docker.sh python3 python/run_poiseuille_flow.py
+```
+
+The helper script automatically mounts the repository into the container while preserving the current working directory. Existing workflows and scripts can therefore be executed without modifying file paths.
+
+For example:
+
+```bash
+cd python
+../run_docker.sh python3 run_couette_flow.py
+```
+Generated simulation outputs and plots remain available on the host system. PDF report generation is optional and requires a local LaTeX installation.
+
 ## Overview
 
 SimplePH solves the incompressible Navier–Stokes equations in 2D using weakly compressible SPH (WC-SPH) discretization.
@@ -138,6 +176,16 @@ solver.run(steps=100, vtk_freq=10, log_freq=10)
 | Integrators | `src/integrator/` | Time stepping (Euler, Verlet) |
 | EOS | `src/sph/eos.hpp` | Pressure closure models |
 | Bindings | `src/bindings.cpp` | Python interface (pybind11) |
+
+
+## Development Features
+
+- Modern C++ implementation with Python bindings via pybind11
+- Automated testing using pytest and GitHub Actions
+- Containerized execution environment using Docker
+- OpenMP parallelization for shared-memory workloads
+- Reproducible validation workflows with automated report generation
+- Cross-platform build system based on CMake
 
 ## Testing
 

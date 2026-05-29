@@ -12,3 +12,4 @@ pybind11>=2.10.0
 
 # Visualization (optional, for plot_*.py)
 matplotlib>=3.0.0
+vtk>=9.2

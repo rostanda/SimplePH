@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
-set -e  # abort on error
+set -euo pipefail
+
+# Always run relative to this script's directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Global settings
-export OMP_NUM_THREADS=4
+AVAILABLE_CORES="$(nproc 2>/dev/null || echo 1)"
+DEFAULT_THREADS="${OMP_NUM_THREADS:-4}"
 
-PYTHON=python3
+if [ "$AVAILABLE_CORES" -lt "$DEFAULT_THREADS" ]; then
+  export OMP_NUM_THREADS="$AVAILABLE_CORES"
+else
+  export OMP_NUM_THREADS="$DEFAULT_THREADS"
+fi
+
+echo "Using OMP_NUM_THREADS=${OMP_NUM_THREADS} on ${AVAILABLE_CORES} available cores"
+
+PYTHON="${PYTHON:-python3}"
 mkdir -p plots
 
 # Channel flow settings (Poiseuille + Couette)
@@ -73,14 +86,21 @@ for RE in "${RE_LDC_LIST[@]}"; do
     --out plots/ldc_velocity_field_Re${RE}_res${RES_LDC}.png
 done
 
-# Build LaTeX report
-echo "=== Building PDF report ==="
+# Build LaTeX report if available
+if command -v pdflatex >/dev/null 2>&1 && command -v bibtex >/dev/null 2>&1; then
+  echo "=== Building PDF report ==="
 
-cd latex
-pdflatex report.tex
-bibtex report
-pdflatex report.tex
-pdflatex report.tex
-cd ..
+  cd latex
+  pdflatex report.tex
+  bibtex report
+  pdflatex report.tex
+  pdflatex report.tex
+  cd ..
+else
+  echo "=== Skipping PDF report: pdflatex/bibtex not available ==="
+  echo "To build the report locally, run:"
+  echo "  cd python/latex"
+  echo "  pdflatex report.tex && bibtex report && pdflatex report.tex && pdflatex report.tex"
+fi
 
 echo "=== DONE ==="

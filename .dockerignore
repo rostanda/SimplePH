@@ -1,0 +1,32 @@
+.git
+.github
+
+# Build artifacts
+build/
+
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Generated output
+*.vtu
+particles_*.vtu
+
+python/plots/
+output/
+
+# LaTeX build files
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
