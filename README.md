@@ -1,6 +1,7 @@
 # SimplePH – Minimal SPH Solver
 
 ![CI](https://github.com/rostanda/SimplePH/actions/workflows/ci.yml/badge.svg)
+[![Docker](https://img.shields.io/badge/GHCR-Container-blue?logo=docker)](https://github.com/rostanda/SimplePH/pkgs/container/simpleph)
 
 A lightweight C++ implementation of a parallelized 2D weakly compressible Smoothed Particle Hydrodynamics (SPH) solver with Python bindings, automated testing, containerized execution and reproducible validation workflows.
 
